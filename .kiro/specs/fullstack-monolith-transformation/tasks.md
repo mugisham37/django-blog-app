@@ -119,7 +119,7 @@
   - **CREATE** comprehensive API documentation with OpenAPI/Swagger
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 10. Implement Django Channels for WebSocket support
+- [x] 10. Implement Django Channels for WebSocket support
 
   - **INSTALL** and configure Django Channels in Django API (modify requirements and settings)
   - **CREATE** WebSocket consumers for real-time notifications

@@ -300,3 +300,96 @@ class CacheInvalidation(models.Model):
     
     def __str__(self):
         return f"Cache invalidation: {self.cache_key} ({self.reason})"
+
+
+class WebSocketConnection(models.Model):
+    """Track WebSocket connections for monitoring and debugging."""
+    
+    class ActionType(models.TextChoices):
+        CONNECTED = 'connected', _('Connected')
+        DISCONNECTED = 'disconnected', _('Disconnected')
+        ERROR = 'error', _('Error')
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # Connection details
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    channel_name = models.CharField(max_length=255)
+    consumer_class = models.CharField(max_length=100)
+    
+    # Action info
+    action = models.CharField(max_length=20, choices=ActionType.choices)
+    close_code = models.IntegerField(null=True, blank=True)
+    
+    # Timing
+    connection_time = models.DateTimeField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    # Additional data
+    extra_data = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = 'core_websocket_connection'
+        verbose_name = _('WebSocket Connection')
+        verbose_name_plural = _('WebSocket Connections')
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['user', 'timestamp']),
+            models.Index(fields=['action', 'timestamp']),
+            models.Index(fields=['consumer_class']),
+        ]
+    
+    def __str__(self):
+        user_info = self.user.username if self.user else 'Anonymous'
+        return f"{user_info} {self.action} {self.consumer_class} at {self.timestamp}"
+
+
+class NotificationTemplate(models.Model):
+    """Templates for WebSocket notifications."""
+    
+    class NotificationType(models.TextChoices):
+        BLOG_POST_PUBLISHED = 'blog_post_published', _('Blog Post Published')
+        COMMENT_ADDED = 'comment_added', _('Comment Added')
+        USER_MENTIONED = 'user_mentioned', _('User Mentioned')
+        NEWSLETTER_SENT = 'newsletter_sent', _('Newsletter Sent')
+        SYSTEM_ALERT = 'system_alert', _('System Alert')
+    
+    notification_type = models.CharField(max_length=50, choices=NotificationType.choices, unique=True)
+    title_template = models.CharField(max_length=200)
+    message_template = models.TextField()
+    
+    # Display options
+    icon = models.CharField(max_length=50, blank=True)
+    color = models.CharField(max_length=20, blank=True)
+    sound = models.CharField(max_length=50, blank=True)
+    
+    # Behavior
+    is_active = models.BooleanField(default=True)
+    auto_dismiss_seconds = models.PositiveIntegerField(default=0, help_text=_('0 = no auto dismiss'))
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'core_notification_template'
+        verbose_name = _('Notification Template')
+        verbose_name_plural = _('Notification Templates')
+    
+    def __str__(self):
+        return f"{self.get_notification_type_display()}"
+    
+    def render(self, context):
+        """Render notification with context data."""
+        from django.template import Template, Context
+        
+        title = Template(self.title_template).render(Context(context))
+        message = Template(self.message_template).render(Context(context))
+        
+        return {
+            'title': title,
+            'message': message,
+            'icon': self.icon,
+            'color': self.color,
+            'sound': self.sound,
+            'auto_dismiss_seconds': self.auto_dismiss_seconds
+        }
