@@ -44,6 +44,8 @@ THIRD_PARTY_APPS = [
     'compressor',
     'imagekit',
     'versatileimagefield',
+    # Enterprise packages
+    'enterprise_database',
 ]
 
 LOCAL_APPS = [

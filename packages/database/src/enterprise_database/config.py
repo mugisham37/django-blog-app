@@ -1,11 +1,44 @@
 """
 Database configuration with connection pooling and optimization settings.
-Updated to use the enterprise_database package.
 """
 
 import os
+from typing import Dict, Any, Optional
 from decouple import config
-from enterprise_database.config import get_database_config, setup_read_replica
+
+
+class DatabaseConfig:
+    """
+    Centralized database configuration management.
+    """
+    
+    def __init__(
+        self,
+        pool_size: int = 10,
+        max_overflow: int = 20,
+        enable_read_replica: bool = False,
+        enable_query_cache: bool = True,
+        enable_monitoring: bool = True,
+        backup_enabled: bool = False,
+    ):
+        self.pool_size = pool_size
+        self.max_overflow = max_overflow
+        self.enable_read_replica = enable_read_replica
+        self.enable_query_cache = enable_query_cache
+        self.enable_monitoring = enable_monitoring
+        self.backup_enabled = backup_enabled
+    
+    def get_databases(self) -> Dict[str, Any]:
+        """Get complete database configuration."""
+        databases = {
+            'default': get_database_config('production'),
+        }
+        
+        if self.enable_read_replica and config('DB_READ_HOST', default=''):
+            databases['read_replica'] = get_read_replica_config()
+        
+        return databases
+
 
 # Database connection pooling configuration
 DATABASE_POOL_CONFIG = {
@@ -61,50 +94,29 @@ DATABASE_POOL_CONFIG = {
     }
 }
 
-# Read replica configuration for scaling reads
-DATABASE_READ_REPLICA_CONFIG = {
-    'ENGINE': 'django.db.backends.postgresql',
-    'NAME': config('DB_READ_NAME', default=DATABASE_POOL_CONFIG['NAME']),
-    'USER': config('DB_READ_USER', default=DATABASE_POOL_CONFIG['USER']),
-    'PASSWORD': config('DB_READ_PASSWORD', default=DATABASE_POOL_CONFIG['PASSWORD']),
-    'HOST': config('DB_READ_HOST', default=DATABASE_POOL_CONFIG['HOST']),
-    'PORT': config('DB_READ_PORT', default=DATABASE_POOL_CONFIG['PORT']),
-    'OPTIONS': DATABASE_POOL_CONFIG['OPTIONS'].copy(),
-}
 
-# Database routing for read/write splitting
-DATABASE_ROUTERS = [
-    'enterprise_database.routers.DatabaseRouter',
-]
+def get_read_replica_config() -> Dict[str, Any]:
+    """Get read replica configuration."""
+    return {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_READ_NAME', default=DATABASE_POOL_CONFIG['NAME']),
+        'USER': config('DB_READ_USER', default=DATABASE_POOL_CONFIG['USER']),
+        'PASSWORD': config('DB_READ_PASSWORD', default=DATABASE_POOL_CONFIG['PASSWORD']),
+        'HOST': config('DB_READ_HOST', default=DATABASE_POOL_CONFIG['HOST']),
+        'PORT': config('DB_READ_PORT', default=DATABASE_POOL_CONFIG['PORT']),
+        'OPTIONS': DATABASE_POOL_CONFIG['OPTIONS'].copy(),
+    }
 
-# Query optimization settings
-DATABASES_OPTIMIZATION = {
-    # Enable query logging in development
-    'ENABLE_QUERY_LOGGING': config('DB_ENABLE_QUERY_LOGGING', default=False, cast=bool),
-    'QUERY_LOG_THRESHOLD': config('DB_QUERY_LOG_THRESHOLD', default=0.5, cast=float),  # Log slow queries
-    
-    # Connection pooling settings
-    'ENABLE_CONNECTION_POOLING': config('DB_ENABLE_CONNECTION_POOLING', default=True, cast=bool),
-    'CONNECTION_POOL_SIZE': config('DB_CONNECTION_POOL_SIZE', default=10, cast=int),
-    'CONNECTION_POOL_MAX_OVERFLOW': config('DB_CONNECTION_POOL_MAX_OVERFLOW', default=20, cast=int),
-    
-    # Query caching settings
-    'ENABLE_QUERY_CACHE': config('DB_ENABLE_QUERY_CACHE', default=True, cast=bool),
-    'QUERY_CACHE_TIMEOUT': config('DB_QUERY_CACHE_TIMEOUT', default=300, cast=int),  # 5 minutes
-    
-    # Bulk operations settings
-    'BULK_CREATE_BATCH_SIZE': config('DB_BULK_CREATE_BATCH_SIZE', default=1000, cast=int),
-    'BULK_UPDATE_BATCH_SIZE': config('DB_BULK_UPDATE_BATCH_SIZE', default=1000, cast=int),
-    
-    # Index optimization settings
-    'AUTO_CREATE_INDEXES': config('DB_AUTO_CREATE_INDEXES', default=True, cast=bool),
-    'INDEX_MAINTENANCE_ENABLED': config('DB_INDEX_MAINTENANCE_ENABLED', default=True, cast=bool),
-}
 
-# Database configuration based on environment
-def get_database_config(environment='development'):
+def get_database_config(environment: str = 'development') -> Dict[str, Any]:
     """
     Get database configuration based on environment.
+    
+    Args:
+        environment: Target environment (development, testing, production)
+        
+    Returns:
+        Database configuration dictionary
     """
     base_config = DATABASE_POOL_CONFIG.copy()
     
@@ -143,6 +155,43 @@ def get_database_config(environment='development'):
     
     return base_config
 
+
+def setup_read_replica(databases: Dict[str, Any]) -> None:
+    """
+    Setup read replica configuration if available.
+    
+    Args:
+        databases: Django DATABASES configuration dictionary
+    """
+    if config('DB_READ_HOST', default=''):
+        databases['read_replica'] = get_read_replica_config()
+
+
+# Query optimization settings
+DATABASES_OPTIMIZATION = {
+    # Enable query logging in development
+    'ENABLE_QUERY_LOGGING': config('DB_ENABLE_QUERY_LOGGING', default=False, cast=bool),
+    'QUERY_LOG_THRESHOLD': config('DB_QUERY_LOG_THRESHOLD', default=0.5, cast=float),  # Log slow queries
+    
+    # Connection pooling settings
+    'ENABLE_CONNECTION_POOLING': config('DB_ENABLE_CONNECTION_POOLING', default=True, cast=bool),
+    'CONNECTION_POOL_SIZE': config('DB_CONNECTION_POOL_SIZE', default=10, cast=int),
+    'CONNECTION_POOL_MAX_OVERFLOW': config('DB_CONNECTION_POOL_MAX_OVERFLOW', default=20, cast=int),
+    
+    # Query caching settings
+    'ENABLE_QUERY_CACHE': config('DB_ENABLE_QUERY_CACHE', default=True, cast=bool),
+    'QUERY_CACHE_TIMEOUT': config('DB_QUERY_CACHE_TIMEOUT', default=300, cast=int),  # 5 minutes
+    
+    # Bulk operations settings
+    'BULK_CREATE_BATCH_SIZE': config('DB_BULK_CREATE_BATCH_SIZE', default=1000, cast=int),
+    'BULK_UPDATE_BATCH_SIZE': config('DB_BULK_UPDATE_BATCH_SIZE', default=1000, cast=int),
+    
+    # Index optimization settings
+    'AUTO_CREATE_INDEXES': config('DB_AUTO_CREATE_INDEXES', default=True, cast=bool),
+    'INDEX_MAINTENANCE_ENABLED': config('DB_INDEX_MAINTENANCE_ENABLED', default=True, cast=bool),
+}
+
+
 # Database health check configuration
 DATABASE_HEALTH_CHECK = {
     'ENABLED': config('DB_HEALTH_CHECK_ENABLED', default=True, cast=bool),
@@ -151,6 +200,7 @@ DATABASE_HEALTH_CHECK = {
     'MAX_FAILURES': config('DB_HEALTH_CHECK_MAX_FAILURES', default=3, cast=int),
 }
 
+
 # Database monitoring configuration
 DATABASE_MONITORING = {
     'ENABLED': config('DB_MONITORING_ENABLED', default=True, cast=bool),
@@ -158,6 +208,7 @@ DATABASE_MONITORING = {
     'LOG_QUERIES': config('DB_LOG_QUERIES', default=False, cast=bool),
     'METRICS_COLLECTION': config('DB_METRICS_COLLECTION', default=True, cast=bool),
 }
+
 
 # Database backup configuration
 DATABASE_BACKUP = {

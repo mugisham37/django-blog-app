@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-database"
+version = "0.1.0"
+description = "Enterprise-grade database abstraction layer with connection pooling and repository patterns"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Enterprise Team", email = "team@enterprise.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: Django",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "Django>=4.0,<5.0",
+    "psycopg2-binary>=2.9.0",
+    "redis>=4.0.0",
+    "celery>=5.2.0",
+    "python-decouple>=3.6",
+    "sqlparse>=0.4.0",
+    "django-extensions>=3.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-django>=4.5.0",
+    "pytest-cov>=4.0.0",
+    "factory-boy>=3.2.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "flake8>=5.0.0",
+]
+monitoring = [
+    "prometheus-client>=0.15.0",
+    "django-prometheus>=2.2.0",
+]
+testing = [
+    "pytest-benchmark>=4.0.0",
+    "pytest-mock>=3.8.0",
+]
+
+[project.scripts]
+db-migrate = "enterprise_database.cli:migrate_command"
+db-seed = "enterprise_database.cli:seed_command"
+db-backup = "enterprise_database.cli:backup_command"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_django = "django"
+known_first_party = "enterprise_database"
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--cov=enterprise_database --cov-report=term-missing --cov-report=html"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/enterprise_database"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/venv/*",
+    "*/env/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
