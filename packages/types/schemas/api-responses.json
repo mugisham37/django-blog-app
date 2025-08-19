@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "APIResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Indicates if the request was successful"
+        },
+        "data": {
+          "description": "The response data"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable message"
+        },
+        "errors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": "Validation errors by field"
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional metadata"
+        }
+      },
+      "required": ["success", "data", "message"],
+      "additionalProperties": false
+    },
+    "PaginationMeta": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Current page number"
+        },
+        "pages": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total number of pages"
+        },
+        "per_page": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Items per page"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of items"
+        },
+        "has_next": {
+          "type": "boolean",
+          "description": "Whether there is a next page"
+        },
+        "has_prev": {
+          "type": "boolean",
+          "description": "Whether there is a previous page"
+        }
+      },
+      "required": [
+        "page",
+        "pages",
+        "per_page",
+        "total",
+        "has_next",
+        "has_prev"
+      ],
+      "additionalProperties": false
+    },
+    "PaginatedResponse": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/APIResponse"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "array",
+              "description": "Array of items"
+            },
+            "pagination": {
+              "$ref": "#/definitions/PaginationMeta"
+            }
+          },
+          "required": ["pagination"]
+        }
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "const": false
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "errors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "status": {
+          "type": "integer",
+          "description": "HTTP status code"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Error timestamp"
+        }
+      },
+      "required": ["success", "message"],
+      "additionalProperties": false
+    }
+  }
+}
