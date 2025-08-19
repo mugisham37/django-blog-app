@@ -1,0 +1,24 @@
+# Development environment configuration
+
+app:
+  debug: true
+  
+database:
+  host: "dev-db.local"
+  name: "enterprise_dev"
+  ssl_enabled: false
+  
+cache:
+  provider: "memory"
+  
+logging:
+  level: "DEBUG"
+  
+security:
+  jwt_expiry: 86400  # 24 hours for development
+  
+# Development-specific features
+dev_tools:
+  profiler_enabled: true
+  debug_toolbar: true
+  hot_reload: true

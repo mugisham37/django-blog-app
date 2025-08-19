@@ -1,0 +1,19 @@
+beta_features:
+  description: null
+  enabled: false
+  end_date: null
+  environments: []
+  metadata: {}
+  percentage: null
+  start_date: null
+  user_groups: []
+new_ui:
+  description: null
+  enabled: true
+  end_date: null
+  environments:
+  - development
+  metadata: {}
+  percentage: null
+  start_date: null
+  user_groups: []

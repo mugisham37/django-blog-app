@@ -1,0 +1,8 @@
+app:
+  debug: true
+  name: My Enterprise App
+  version: 1.0.0
+database:
+  host: localhost
+  name: myapp_dev
+  port: 5432

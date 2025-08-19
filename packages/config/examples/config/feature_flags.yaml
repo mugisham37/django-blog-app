@@ -1,0 +1,28 @@
+# Feature flags configuration
+
+new_dashboard:
+  enabled: true
+  description: "New dashboard interface"
+  environments: ["development", "staging"]
+  percentage: 50.0
+  
+beta_features:
+  enabled: false
+  description: "Beta features for testing"
+  user_groups: ["beta_users", "internal_team"]
+  
+mobile_app:
+  enabled: true
+  description: "Mobile application features"
+  environments: ["development", "staging", "production"]
+  
+advanced_analytics:
+  enabled: false
+  description: "Advanced analytics dashboard"
+  percentage: 10.0
+  environments: ["production"]
+  
+social_login:
+  enabled: true
+  description: "Social media login integration"
+  environments: ["development", "staging", "production"]

@@ -1,0 +1,30 @@
+# Base configuration for all environments
+
+app:
+  name: "Enterprise Application"
+  version: "1.0.0"
+  debug: false
+  timezone: "UTC"
+  
+database:
+  host: "localhost"
+  port: 5432
+  name: "enterprise_db"
+  ssl_enabled: true
+  connection_timeout: 30
+  
+cache:
+  provider: "redis"
+  ttl: 3600
+  
+logging:
+  level: "INFO"
+  format: "json"
+  
+security:
+  jwt_expiry: 3600
+  password_min_length: 8
+  
+features:
+  user_registration: true
+  email_verification: true
