@@ -19,7 +19,11 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
-from apps.analytics.routing import websocket_urlpatterns
+from apps.analytics.routing import websocket_urlpatterns as analytics_websocket_urlpatterns
+from apps.blog.routing import websocket_urlpatterns as blog_websocket_urlpatterns
+
+# Combine all WebSocket URL patterns
+websocket_urlpatterns = analytics_websocket_urlpatterns + blog_websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,

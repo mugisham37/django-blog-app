@@ -43,9 +43,7 @@ THIRD_PARTY_APPS = [
     'channels',
     'compressor',
     'imagekit',
-    'versatileimagefield',
-    # Enterprise packages
-    'enterprise_database',
+    # 'versatileimagefield',  # Disabled due to libmagic issues on Windows
 ]
 
 LOCAL_APPS = [
@@ -55,6 +53,7 @@ LOCAL_APPS = [
     'apps.comments',
     'apps.analytics',
     'apps.newsletter',
+    'apps.api',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -186,6 +185,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Custom user model
+AUTH_USER_MODEL = 'accounts.User'
 
 # Site framework
 SITE_ID = 1

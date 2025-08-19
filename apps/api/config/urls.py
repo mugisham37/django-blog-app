@@ -29,32 +29,14 @@ urlpatterns = [
     # CKEditor
     path('ckeditor/', include('ckeditor_uploader.urls')),
     
-    # API Documentation
-    path('api/docs/', include('apps.core.urls.api_docs', namespace='api-docs')),
+    # API Endpoints (Versioned)
+    path('api/', include('apps.api.urls', namespace='api')),
     
-    # API v1
-    path('api/v1/', include('apps.blog.urls.api', namespace='blog-api-v1')),
-    path('api/v1/', include('apps.comments.urls.api', namespace='comments-api-v1')),
-    
-    # Social media APIs
-    path('api/social/', include('apps.blog.urls.social', namespace='social')),
-    
-    # API (default to v1 for backward compatibility)
-    path('api/', include('apps.blog.urls.api', namespace='blog-api')),
-    path('api/', include('apps.comments.urls.api', namespace='comments-api')),
-    
-    # Analytics
-    path('analytics/', include('apps.analytics.urls', namespace='analytics')),
-    
-    # Core security URLs
-    path('core/', include('apps.core.urls', namespace='core')),
-    path('security/', include('apps.core.security_urls', namespace='security')),
-    
-    # Main application URLs
-    path('accounts/', include('apps.accounts.urls', namespace='accounts')),
-    path('comments/', include('apps.comments.urls', namespace='comments')),
-    path('newsletter/', include('apps.newsletter.urls', namespace='newsletter')),
-    path('', include('apps.blog.urls', namespace='blog')),
+    # Main application URLs (will be created later)
+    # path('accounts/', include('apps.accounts.urls', namespace='accounts')),
+    # path('comments/', include('apps.comments.urls', namespace='comments')),
+    # path('newsletter/', include('apps.newsletter.urls', namespace='newsletter')),
+    # path('', include('apps.blog.urls', namespace='blog')),
     
     # SEO URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
@@ -77,7 +59,7 @@ if settings.DEBUG:
     #         path('__debug__/', include(debug_toolbar.urls)),
     #     ] + urlpatterns
 
-# Custom error handlers
-handler404 = 'apps.core.views.handler404'
-handler500 = 'apps.core.views.handler500'
-handler403 = 'apps.core.views.handler403'
+# Custom error handlers (will be created later)
+# handler404 = 'apps.core.views.handler404'
+# handler500 = 'apps.core.views.handler500'
+# handler403 = 'apps.core.views.handler403'

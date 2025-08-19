@@ -1,11 +1,9 @@
 """
 Database configuration with connection pooling and optimization settings.
-Updated to use the enterprise_database package.
 """
 
 import os
 from decouple import config
-from enterprise_database.config import get_database_config, setup_read_replica
 
 # Database connection pooling configuration
 DATABASE_POOL_CONFIG = {
@@ -73,9 +71,7 @@ DATABASE_READ_REPLICA_CONFIG = {
 }
 
 # Database routing for read/write splitting
-DATABASE_ROUTERS = [
-    'enterprise_database.routers.DatabaseRouter',
-]
+DATABASE_ROUTERS = []
 
 # Query optimization settings
 DATABASES_OPTIMIZATION = {
@@ -106,6 +102,13 @@ def get_database_config(environment='development'):
     """
     Get database configuration based on environment.
     """
+    if environment == 'development':
+        # Use SQLite for development
+        return {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': config('DB_NAME', default='db.sqlite3'),
+        }
+    
     base_config = DATABASE_POOL_CONFIG.copy()
     
     if environment == 'production':
@@ -130,15 +133,6 @@ def get_database_config(environment='development'):
                 'POOL_SIZE': 2,
                 'MAX_OVERFLOW': 5,
             }
-        })
-    elif environment == 'development':
-        # Development-specific settings
-        base_config['OPTIONS'].update({
-            'CONN_MAX_AGE': 300,  # 5 minutes
-            'MAX_CONNS': 10,
-            'MIN_CONNS': 2,
-            'POOL_SIZE': 5,
-            'MAX_OVERFLOW': 10,
         })
     
     return base_config
