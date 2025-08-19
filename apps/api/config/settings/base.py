@@ -320,6 +320,11 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
         'apps.core.throttling.StaffRateThrottle',
         'apps.core.throttling.PremiumUserRateThrottle',
+        'apps.core.throttling.BurstRateThrottle',
+        'apps.core.throttling.SearchRateThrottle',
+        'apps.core.throttling.UploadRateThrottle',
+        'apps.core.throttling.DynamicRateThrottle',
+        'apps.core.throttling.EndpointSpecificThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',           # Anonymous users: 100 requests per hour
