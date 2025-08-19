@@ -1,0 +1,72 @@
+{
+  "name": "fullstack-monolith-transformation",
+  "version": "1.0.0",
+  "description": "Enterprise-grade fullstack monolithic architecture with Django API and Next.js frontend",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd apps/api && python manage.py runserver",
+    "dev:web": "cd apps/web && npm run dev",
+    "build": "npm run build:web && npm run build:api",
+    "build:web": "cd apps/web && npm run build",
+    "build:api": "cd apps/api && python manage.py collectstatic --noinput",
+    "test": "npm run test:web && npm run test:api",
+    "test:web": "cd apps/web && npm test",
+    "test:api": "cd apps/api && python -m pytest",
+    "lint": "npm run lint:web && npm run lint:api",
+    "lint:web": "cd apps/web && npm run lint",
+    "lint:api": "cd apps/api && flake8 .",
+    "format": "npm run format:web && npm run format:api",
+    "format:web": "cd apps/web && npm run format",
+    "format:api": "cd apps/api && black . && isort .",
+    "install:all": "npm install && npm run install:web && npm run install:api",
+    "install:web": "cd apps/web && npm install",
+    "install:api": "cd apps/api && pip install -r requirements/development.txt",
+    "clean": "npm run clean:web && npm run clean:api",
+    "clean:web": "cd apps/web && rm -rf .next node_modules",
+    "clean:api": "cd apps/api && find . -name '*.pyc' -delete && find . -name '__pycache__' -delete",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/fullstack-monolith-transformation.git"
+  },
+  "keywords": [
+    "django",
+    "nextjs",
+    "monolith",
+    "fullstack",
+    "enterprise",
+    "typescript",
+    "python"
+  ],
+  "author": "Your Organization",
+  "license": "MIT",
+  "lint-staged": {
+    "apps/web/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "apps/api/**/*.py": [
+      "black",
+      "isort",
+      "flake8"
+    ]
+  }
+}
