@@ -1,0 +1,141 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-core"
+version = "1.0.0"
+authors = [
+    {name = "Enterprise Development Team", email = "dev@enterprise.com"},
+]
+description = "Core business logic and utilities for enterprise applications"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: Django",
+    "Framework :: Django :: 4.0",
+    "Framework :: Django :: 4.1",
+    "Framework :: Django :: 4.2",
+]
+dependencies = [
+    "Django>=4.0,<5.0",
+    "Pillow>=9.0.0",
+    "bleach>=5.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-django>=4.5.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "flake8>=5.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-django>=4.5.0",
+    "pytest-cov>=4.0.0",
+    "factory-boy>=3.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/enterprise/core"
+Documentation = "https://enterprise-core.readthedocs.io/"
+Repository = "https://github.com/enterprise/core.git"
+"Bug Tracker" = "https://github.com/enterprise/core/issues"
+
+[project.scripts]
+enterprise-core = "enterprise_core.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_django = "django"
+known_first_party = "enterprise_core"
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=enterprise_core",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/enterprise_core"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/venv/*",
+    "*/env/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+    ".venv",
+    ".tox",
+]
