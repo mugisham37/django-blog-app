@@ -1,0 +1,49 @@
+# Core Django and database
+Django>=5.0,<5.1
+psycopg2-binary>=2.9.7
+redis>=4.6.0
+hiredis>=2.2.3
+
+# ORM and database tools
+django-extensions>=3.2.3
+
+# Caching and sessions
+django-redis>=5.3.0
+
+# Background tasks
+celery>=5.3.0
+django-celery-beat>=2.5.0
+django-celery-results>=2.5.0
+
+# Rich text editing
+django-ckeditor>=6.7.0
+Pillow>=10.0.0
+
+# API development
+djangorestframework>=3.14.0
+django-filter>=23.2
+django-cors-headers>=4.3.0
+
+# WebSocket support
+channels>=4.0.0
+channels-redis>=4.1.0
+
+# Excel export support
+openpyxl>=3.1.0
+
+# Security and validation
+django-ratelimit>=4.1.0
+bleach>=6.0.0
+python-magic>=0.4.27
+
+# Static file optimization
+django-compressor>=4.4
+django-libsass>=0.9
+
+# Image optimization
+django-imagekit>=5.0.0
+django-versatileimagefield>=3.0
+
+# Utilities
+python-slugify>=8.0.1
+python-decouple>=3.8

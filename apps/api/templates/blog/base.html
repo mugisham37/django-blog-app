@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .post-meta {
+        color: #6c757d;
+        font-size: 0.9em;
+    }
+    
+    .post-excerpt {
+        margin: 1rem 0;
+        color: #495057;
+    }
+    
+    .tag {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        margin: 0.125rem;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        color: white;
+    }
+    
+    .category-badge {
+        background-color: #007bff;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.8rem;
+        text-decoration: none;
+    }
+    
+    .reading-time {
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+    
+    .post-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.25rem;
+        margin: 1rem 0;
+    }
+    
+    .post-navigation {
+        border-top: 1px solid #dee2e6;
+        padding-top: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .related-posts {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-top: 2rem;
+    }
+    
+    .preview-banner {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 0.75rem 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .ckeditor-content {
+        min-height: 400px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script>
+    // CKEditor initialization and preview functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize CKEditor if present
+        const editorElement = document.querySelector('#id_content');
+        if (editorElement) {
+            ClassicEditor
+                .create(editorElement, {
+                    toolbar: [
+                        'heading', '|',
+                        'bold', 'italic', 'underline', 'strikethrough', '|',
+                        'numberedList', 'bulletedList', '|',
+                        'outdent', 'indent', '|',
+                        'alignment', '|',
+                        'link', 'imageUpload', 'blockQuote', 'insertTable', '|',
+                        'undo', 'redo', '|',
+                        'sourceEditing'
+                    ],
+                    image: {
+                        toolbar: [
+                            'imageTextAlternative', 'imageStyle:full', 'imageStyle:side'
+                        ]
+                    },
+                    simpleUpload: {
+                        uploadUrl: '{% url "blog:ckeditor_upload" %}',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        }
+                    }
+                })
+                .then(editor => {
+                    window.editor = editor;
+                    
+                    // Auto-save functionality
+                    let saveTimeout;
+                    editor.model.document.on('change:data', () => {
+                        clearTimeout(saveTimeout);
+                        saveTimeout = setTimeout(() => {
+                            validateContent();
+                        }, 1000);
+                    });
+                })
+                .catch(error => {
+                    console.error('CKEditor initialization error:', error);
+                });
+        }
+        
+        // Auto-generate slug from title
+        const titleField = document.querySelector('#id_title');
+        const slugField = document.querySelector('#id_slug');
+        
+        if (titleField && slugField) {
+            titleField.addEventListener('blur', function() {
+                if (!slugField.value && titleField.value) {
+                    generateSlug(titleField.value);
+                }
+            });
+        }
+        
+        // Preview functionality
+        const previewBtn = document.querySelector('#preview-btn');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                showPreview();
+            });
+        }
+    });
+    
+    function validateContent() {
+        if (!window.editor) return;
+        
+        const content = window.editor.getData();
+        const title = document.querySelector('#id_title').value;
+        const excerpt = document.querySelector('#id_excerpt').value;
+        
+        fetch('{% url "blog:validate_content" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                content: content,
+                title: title,
+                excerpt: excerpt
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update reading time display
+                const readingTimeEl = document.querySelector('#reading-time');
+                if (readingTimeEl) {
+                    readingTimeEl.textContent = data.reading_time + ' min read';
+                }
+                
+                // Auto-fill excerpt if empty
+                const excerptField = document.querySelector('#id_excerpt');
+                if (excerptField && !excerptField.value && data.excerpt) {
+                    excerptField.value = data.excerpt;
+                }
+                
+                // Update word count
+                const wordCountEl = document.querySelector('#word-count');
+                if (wordCountEl) {
+                    wordCountEl.textContent = data.word_count + ' words';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Content validation error:', error);
+        });
+    }
+    
+    function generateSlug(title) {
+        const postId = document.querySelector('#post-id') ? document.querySelector('#post-id').value : null;
+        
+        fetch('{% url "blog:generate_slug" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                title: title,
+                post_id: postId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.querySelector('#id_slug').value = data.slug;
+            }
+        })
+        .catch(error => {
+            console.error('Slug generation error:', error);
+        });
+    }
+    
+    function showPreview() {
+        if (!window.editor) return;
+        
+        const formData = {
+            title: document.querySelector('#id_title').value,
+            content: window.editor.getData(),
+            excerpt: document.querySelector('#id_excerpt').value,
+            category: document.querySelector('#id_category').value
+        };
+        
+        fetch('{% url "blog:post_preview_ajax" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Open preview in new window
+                const previewWindow = window.open('', 'preview', 'width=800,height=600,scrollbars=yes');
+                previewWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Preview: ${formData.title}</title>
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                        <style>
+                            body { padding: 2rem; }
+                            .preview-banner { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 0.75rem 1rem; border-radius: 0.25rem; margin-bottom: 1rem; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="preview-banner">
+                            <strong>Preview Mode</strong> - This is how your post will appear to readers.
+                        </div>
+                        ${data.html}
+                    </body>
+                    </html>
+                `);
+                previewWindow.document.close();
+            } else {
+                alert('Preview failed: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Preview error:', error);
+            alert('Preview failed. Please try again.');
+        });
+    }
+</script>
+{% endblock %}

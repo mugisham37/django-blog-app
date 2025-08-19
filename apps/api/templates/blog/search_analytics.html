@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Search Analytics - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: box-shadow 0.15s ease-in-out;
+    }
+    
+    .analytics-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .trend-up {
+        color: #28a745;
+    }
+    
+    .trend-down {
+        color: #dc3545;
+    }
+    
+    .search-query-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .query-item {
+        padding: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .query-item:last-child {
+        border-bottom: none;
+    }
+    
+    .query-text {
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    .query-stats {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .badge-success {
+        background-color: #28a745;
+    }
+    
+    .badge-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .badge-danger {
+        background-color: #dc3545;
+    }
+    
+    .time-filter {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2 mb-0">Search Analytics</h1>
+        <div class="btn-group" role="group">
+            <a href="?days=7" class="btn btn-outline-primary {% if days == 7 %}active{% endif %}">7 Days</a>
+            <a href="?days=30" class="btn btn-outline-primary {% if days == 30 %}active{% endif %}">30 Days</a>
+            <a href="?days=90" class="btn btn-outline-primary {% if days == 90 %}active{% endif %}">90 Days</a>
+        </div>
+    </div>
+    
+    <!-- Time Filter Info -->
+    <div class="time-filter">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h6 class="mb-1">Analytics Period</h6>
+                <p class="mb-0 text-muted">
+                    Showing data for the last {{ days }} day{{ days|pluralize }}
+                    ({{ stats.total_searches }} total searches)
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="{% url 'blog:search_export_api' %}?format=csv&days={{ days }}" 
+                   class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-download"></i> Export CSV
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Key Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ stats.total_searches }}</div>
+                    <div class="stat-label">Total Searches</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ stats.unique_queries }}</div>
+                    <div class="stat-label">Unique Queries</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ stats.avg_results_per_search|floatformat:1 }}</div>
+                    <div class="stat-label">Avg Results</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ stats.click_through_rate|floatformat:1 }}%</div>
+                    <div class="stat-label">Click-Through Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Secondary Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number text-danger">{{ stats.failed_searches }}</div>
+                    <div class="stat-label">Failed Searches</div>
+                    <small class="text-muted">
+                        {{ stats.failed_searches|default:0 }} / {{ stats.total_searches }} 
+                        ({% widthratio stats.failed_searches stats.total_searches 100 %}%)
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number text-success">{{ stats.searches_with_clicks }}</div>
+                    <div class="stat-label">Searches with Clicks</div>
+                    <small class="text-muted">
+                        {{ stats.searches_with_clicks }} / {{ stats.total_searches }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card analytics-card">
+                <div class="card-body text-center">
+                    <div class="stat-number">
+                        {% if stats.total_searches > 0 %}
+                            {% widthratio stats.unique_queries stats.total_searches 100 %}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Query Diversity</div>
+                    <small class="text-muted">Unique / Total</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Popular Searches -->
+        <div class="col-md-6">
+            <div class="card analytics-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-fire text-warning"></i> Popular Searches
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if popular_searches %}
+                        <div class="search-query-list">
+                            {% for search in popular_searches %}
+                                <div class="query-item">
+                                    <div>
+                                        <div class="query-text">{{ search.query }}</div>
+                                        <div class="query-stats">
+                                            {{ search.search_count }} search{{ search.search_count|pluralize }}
+                                            • Avg {{ search.avg_results|floatformat:1 }} results
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {% if search.avg_results > 5 %}
+                                            <span class="badge badge-success">High</span>
+                                        {% elif search.avg_results > 1 %}
+                                            <span class="badge badge-warning">Medium</span>
+                                        {% else %}
+                                            <span class="badge badge-danger">Low</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-search fa-2x mb-2"></i>
+                            <p>No search data available for this period.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Failed Searches -->
+        <div class="col-md-6">
+            <div class="card analytics-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle text-danger"></i> Failed Searches
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if failed_searches %}
+                        <div class="search-query-list">
+                            {% for search in failed_searches %}
+                                <div class="query-item">
+                                    <div>
+                                        <div class="query-text">{{ search.query }}</div>
+                                        <div class="query-stats">
+                                            {{ search.search_count }} attempt{{ search.search_count|pluralize }}
+                                            • 0 results
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="badge badge-danger">Failed</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                            <p>No failed searches in this period!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Trending Searches -->
+    {% if trending_searches %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-trending-up text-info"></i> Trending Searches
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for search in trending_searches %}
+                                <div class="col-md-3 mb-3">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h6 mb-1">{{ search.query }}</div>
+                                        <small class="text-muted">
+                                            {{ search.search_count }} searches
+                                        </small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Search Insights -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card analytics-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb text-warning"></i> Search Insights
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Content Opportunities</h6>
+                            <ul class="list-unstyled">
+                                {% if failed_searches %}
+                                    <li class="mb-2">
+                                        <i class="fas fa-arrow-right text-primary me-2"></i>
+                                        Consider creating content for failed searches like:
+                                        {% for search in failed_searches|slice:":3" %}
+                                            <strong>"{{ search.query }}"</strong>{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    </li>
+                                {% endif %}
+                                <li class="mb-2">
+                                    <i class="fas fa-arrow-right text-primary me-2"></i>
+                                    {% if stats.click_through_rate < 30 %}
+                                        Low click-through rate suggests search results may not match user intent
+                                    {% else %}
+                                        Good click-through rate indicates relevant search results
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Performance Summary</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-chart-line text-success me-2"></i>
+                                    Average of {{ stats.avg_results_per_search|floatformat:1 }} results per search
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-users text-info me-2"></i>
+                                    {{ stats.unique_queries }} unique search queries
+                                </li>
+                                <li class="mb-2">
+                                    {% if stats.failed_searches > 0 %}
+                                        <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                        {% widthratio stats.failed_searches stats.total_searches 100 %}% of searches returned no results
+                                    {% else %}
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        All searches returned results!
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add tooltips to metric cards
+    const cards = document.querySelectorAll('.analytics-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Auto-refresh data every 5 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 300000); // 5 minutes
+});
+</script>
+{% endblock %}

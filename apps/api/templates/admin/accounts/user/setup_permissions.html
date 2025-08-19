@@ -1,0 +1,76 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='auth' %}">{% trans 'Authentication and Authorization' %}</a>
+&rsaquo; <a href="{% url 'admin:auth_user_changelist' %}">{% trans 'Users' %}</a>
+&rsaquo; {% trans 'Setup Blog Permissions' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="module aligned">
+    <h2>{% trans 'Blog Permission Setup' %}</h2>
+    <p>{% trans 'This will create or update the default blog groups and their permissions:' %}</p>
+    
+    <div class="form-row">
+        <div>
+            <h3 style="color: blue;">{% trans 'Authors Group' %}</h3>
+            <ul>
+                <li>{% trans 'Create and edit own blog posts' %}</li>
+                <li>{% trans 'Publish and schedule own posts' %}</li>
+                <li>{% trans 'Create tags' %}</li>
+                <li>{% trans 'View categories' %}</li>
+                <li>{% trans 'Add and edit own comments' %}</li>
+            </ul>
+            
+            <h3 style="color: green;">{% trans 'Editors Group' %}</h3>
+            <ul>
+                <li>{% trans 'All Author permissions' %}</li>
+                <li>{% trans 'Edit and delete all posts' %}</li>
+                <li>{% trans 'Feature posts' %}</li>
+                <li>{% trans 'Manage categories and tags' %}</li>
+                <li>{% trans 'Moderate comments' %}</li>
+                <li>{% trans 'View basic analytics' %}</li>
+            </ul>
+            
+            <h3 style="color: red;">{% trans 'Administrators Group' %}</h3>
+            <ul>
+                <li>{% trans 'All Editor permissions' %}</li>
+                <li>{% trans 'Manage users and assign roles' %}</li>
+                <li>{% trans 'View and export analytics' %}</li>
+                <li>{% trans 'Manage system settings' %}</li>
+                <li>{% trans 'View system logs' %}</li>
+                <li>{% trans 'Django admin access' %}</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="module aligned">
+    <h2>{% trans 'Warning' %}</h2>
+    <div class="form-row">
+        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px;">
+            <strong>{% trans 'Important:' %}</strong>
+            <p>{% trans 'This operation will create new groups and permissions if they do not exist, or update existing ones. Existing group memberships will not be affected.' %}</p>
+            <p>{% trans 'Make sure you have a backup of your database before proceeding.' %}</p>
+        </div>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="submit-row">
+        <button type="submit" class="button" style="background-color: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer;">
+            {% trans 'Setup Blog Permissions' %}
+        </button>
+        <a href="{% url 'admin:auth_group_changelist' %}" class="button">{% trans 'Cancel' %}</a>
+    </div>
+</form>
+{% endblock %}

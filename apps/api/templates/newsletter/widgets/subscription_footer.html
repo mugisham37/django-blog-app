@@ -1,0 +1,117 @@
+{% load static %}
+
+<div class="newsletter-footer-widget">
+    <div class="newsletter-footer-content">
+        <div class="newsletter-footer-icon">
+            <i class="fas fa-envelope-open"></i>
+        </div>
+        
+        <div class="newsletter-footer-text">
+            <h6 class="newsletter-footer-title">Newsletter</h6>
+            <p class="newsletter-footer-description">
+                Join {{ formatted_count }}+ subscribers and get our latest updates.
+            </p>
+        </div>
+        
+        <div class="newsletter-footer-actions">
+            <a href="{% url 'newsletter:subscribe' %}" class="btn btn-outline-primary btn-sm newsletter-footer-btn">
+                <i class="fas fa-plus me-1"></i>Subscribe
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.newsletter-footer-widget {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    transition: all 0.3s ease;
+}
+
+.newsletter-footer-widget:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.newsletter-footer-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.newsletter-footer-icon {
+    font-size: 1.5rem;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+.newsletter-footer-text {
+    flex: 1;
+}
+
+.newsletter-footer-title {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.newsletter-footer-description {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.newsletter-footer-actions {
+    flex-shrink: 0;
+}
+
+.newsletter-footer-btn {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.newsletter-footer-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Responsive design */
+@media (max-width: 576px) {
+    .newsletter-footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .newsletter-footer-btn {
+        width: 100%;
+        max-width: 150px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .newsletter-footer-widget {
+        background-color: #343a40;
+        border-color: #495057;
+    }
+    
+    .newsletter-footer-title {
+        color: #f8f9fa;
+    }
+    
+    .newsletter-footer-description {
+        color: #adb5bd;
+    }
+    
+    .newsletter-footer-icon {
+        color: #adb5bd;
+    }
+}
+</style>

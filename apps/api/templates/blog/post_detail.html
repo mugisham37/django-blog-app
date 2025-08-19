@@ -1,0 +1,546 @@
+{% extends 'base.html' %}
+{% load static seo_tags %}
+
+{% block title %}{{ post.get_seo_title }}{% endblock %}
+
+{% block meta_description %}{{ post.get_seo_description }}{% endblock %}
+{% block meta_keywords %}{{ seo_keywords|join:", " }}{% endblock %}
+
+<!-- Enhanced Social Media Meta Tags -->
+{% enhanced_social_meta_tags post request %}
+
+{% block extra_css %}
+<style>
+    .breadcrumb {
+        background: none;
+        padding: 0;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .breadcrumb-item + .breadcrumb-item::before {
+        content: "›";
+        color: #6c757d;
+        margin: 0 0.5rem;
+    }
+    
+    .post-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .post-meta {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+    
+    .post-meta .meta-item {
+        margin-right: 1rem;
+    }
+    
+    .post-content {
+        line-height: 1.8;
+        font-size: 1.1rem;
+    }
+    
+    .post-content img {
+        max-width: 100%;
+        height: auto;
+        margin: 1rem 0;
+        border-radius: 0.25rem;
+    }
+    
+    .post-tags {
+        margin: 2rem 0;
+    }
+    
+    .tag {
+        display: inline-block;
+        background: #f8f9fa;
+        color: #495057;
+        padding: 0.25rem 0.5rem;
+        margin: 0.25rem 0.25rem 0.25rem 0;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        font-size: 0.85rem;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s;
+    }
+    
+    .tag:hover {
+        background: #e9ecef;
+        text-decoration: none;
+        color: #495057;
+    }
+    
+    .social-sharing {
+        margin: 2rem 0;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        text-align: center;
+    }
+    
+    .social-sharing h5 {
+        margin-bottom: 1rem;
+        color: #495057;
+    }
+    
+    .social-btn {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        border-radius: 0.25rem;
+        text-decoration: none;
+        color: white;
+        font-size: 0.9rem;
+        transition: opacity 0.2s;
+    }
+    
+    .social-btn:hover {
+        opacity: 0.8;
+        text-decoration: none;
+        color: white;
+    }
+    
+    .social-btn.twitter { background: #1da1f2; }
+    .social-btn.facebook { background: #4267b2; }
+    .social-btn.linkedin { background: #0077b5; }
+    .social-btn.reddit { background: #ff4500; }
+    .social-btn.email { background: #6c757d; }
+    
+    .post-navigation {
+        margin: 3rem 0;
+        padding: 1rem 0;
+        border-top: 1px solid #e9ecef;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .nav-post {
+        text-decoration: none;
+        color: #495057;
+        display: block;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        transition: background 0.2s;
+    }
+    
+    .nav-post:hover {
+        background: #f8f9fa;
+        text-decoration: none;
+        color: #495057;
+    }
+    
+    .nav-post-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .nav-post-title {
+        font-weight: 500;
+        margin-top: 0.25rem;
+    }
+    
+    .related-posts {
+        margin: 3rem 0;
+    }
+    
+    .related-post-card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: box-shadow 0.2s;
+        height: 100%;
+    }
+    
+    .related-post-card:hover {
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    
+    .related-post-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .related-post-content {
+        padding: 1rem;
+    }
+    
+    .related-post-title {
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .related-post-title a {
+        text-decoration: none;
+        color: #495057;
+    }
+    
+    .related-post-title a:hover {
+        color: #007bff;
+    }
+    
+    .related-post-meta {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .comments-section {
+        margin: 3rem 0;
+        padding-top: 2rem;
+        border-top: 2px solid #e9ecef;
+    }
+    
+    .comment {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        border-left: 3px solid #007bff;
+    }
+    
+    .comment-author {
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    .comment-date {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-left: 0.5rem;
+    }
+    
+    .comment-content {
+        margin-top: 0.5rem;
+        line-height: 1.6;
+    }
+    
+    .reading-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 0%;
+        height: 3px;
+        background: #007bff;
+        z-index: 1000;
+        transition: width 0.1s;
+    }
+    
+    @media (max-width: 768px) {
+        .post-content {
+            font-size: 1rem;
+        }
+        
+        .social-btn {
+            display: block;
+            margin: 0.25rem 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="reading-progress"></div>
+    
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            {% for breadcrumb in breadcrumbs %}
+                {% if breadcrumb.current %}
+                    <li class="breadcrumb-item active" aria-current="page">{{ breadcrumb.title|truncatechars:50 }}</li>
+                {% else %}
+                    <li class="breadcrumb-item">
+                        <a href="{{ breadcrumb.url }}">{{ breadcrumb.title }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ol>
+    </nav>
+    
+    <article class="post-detail">
+        <!-- Post Header -->
+        <header class="post-header">
+            <h1 class="post-title">{{ post.title }}</h1>
+            
+            <div class="post-meta">
+                <span class="meta-item">
+                    <i class="fas fa-user"></i>
+                    By <strong>{{ post.author.get_full_name|default:post.author.username }}</strong>
+                </span>
+                
+                <span class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    {{ post.published_at|date:"F d, Y" }}
+                </span>
+                
+                <span class="meta-item">
+                    <i class="fas fa-clock"></i>
+                    {{ post.get_reading_time_display }}
+                </span>
+                
+                <span class="meta-item">
+                    <i class="fas fa-eye"></i>
+                    {{ post.view_count }} view{{ post.view_count|pluralize }}
+                </span>
+                
+                {% if post.category %}
+                <span class="meta-item">
+                    <i class="fas fa-folder"></i>
+                    <a href="{{ post.category.get_absolute_url }}">{{ post.category.name }}</a>
+                </span>
+                {% endif %}
+            </div>
+            
+            {% if post.excerpt %}
+            <div class="post-excerpt">
+                <p class="lead">{{ post.excerpt }}</p>
+            </div>
+            {% endif %}
+        </header>
+        
+        <!-- Featured Image -->
+        {% if post.featured_image %}
+        <div class="post-featured-image mb-4">
+            <img src="{{ post.featured_image.url }}" alt="{{ post.title }}" class="img-fluid rounded">
+        </div>
+        {% endif %}
+        
+        <!-- Post Content -->
+        <div class="post-content" id="post-content">
+            {{ post.content|safe }}
+        </div>
+        
+        <!-- Post Tags -->
+        {% if post.tags.exists %}
+        <div class="post-tags">
+            <h6>Tags:</h6>
+            {% for tag in post.tags.all %}
+                <a href="{{ tag.get_absolute_url }}" class="tag" style="border-color: {{ tag.color }};">
+                    {{ tag.name }}
+                </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- Enhanced Social Sharing -->
+        {% enhanced_social_sharing_buttons post %}
+    </article>
+    
+    <!-- Post Navigation -->
+    {% if previous_post or next_post %}
+    <nav class="post-navigation">
+        <div class="row">
+            <div class="col-md-6">
+                {% if previous_post %}
+                <a href="{{ previous_post.get_absolute_url }}" class="nav-post">
+                    <div class="nav-post-label">← Previous Post</div>
+                    <div class="nav-post-title">{{ previous_post.title|truncatechars:60 }}</div>
+                </a>
+                {% endif %}
+            </div>
+            <div class="col-md-6 text-md-right">
+                {% if next_post %}
+                <a href="{{ next_post.get_absolute_url }}" class="nav-post">
+                    <div class="nav-post-label">Next Post →</div>
+                    <div class="nav-post-title">{{ next_post.title|truncatechars:60 }}</div>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Related Posts -->
+    {% if related_posts %}
+    <section class="related-posts">
+        <h3>Related Articles</h3>
+        <div class="row">
+            {% for related_post in related_posts %}
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="related-post-card">
+                    {% if related_post.featured_image %}
+                    <img src="{{ related_post.featured_image.url }}" alt="{{ related_post.title }}" class="related-post-image">
+                    {% else %}
+                    <div class="related-post-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    {% endif %}
+                    <div class="related-post-content">
+                        <h6 class="related-post-title">
+                            <a href="{{ related_post.get_absolute_url }}">{{ related_post.title|truncatechars:60 }}</a>
+                        </h6>
+                        <div class="related-post-meta">
+                            {{ related_post.published_at|date:"M d, Y" }} • {{ related_post.get_reading_time_display }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    
+    <!-- Comments Section -->
+    {% if comments_enabled %}
+    <section class="comments-section">
+        <h3>Comments ({{ comment_count }})</h3>
+        
+        {% if user_can_comment %}
+        <!-- Comment Form -->
+        <div class="comment-form mb-4">
+            {% if comment_form %}
+            <h5>Leave a Comment</h5>
+            <form method="post" action="{% url 'comments:add_comment' post.pk %}" id="comment-form">
+                {% csrf_token %}
+                {{ comment_form.as_p }}
+                <button type="submit" class="btn btn-primary">Post Comment</button>
+            </form>
+            {% else %}
+            <div class="alert alert-info">
+                Comments are not available at this time.
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <a href="{% url 'accounts:login' %}">Login</a> to leave a comment.
+        </div>
+        {% endif %}
+        
+        <!-- Comments List -->
+        {% if comments %}
+        <div class="comments-list">
+            {% for comment in comments %}
+            <div class="comment">
+                <div class="comment-header">
+                    <span class="comment-author">{{ comment.author.get_full_name|default:comment.author.username }}</span>
+                    <span class="comment-date">{{ comment.created_at|date:"M d, Y \a\t g:i A" }}</span>
+                </div>
+                <div class="comment-content">
+                    {{ comment.content|linebreaks }}
+                </div>
+                
+                <!-- Nested Replies -->
+                {% if comment.replies.exists %}
+                <div class="comment-replies ml-4 mt-3">
+                    {% for reply in comment.replies.all %}
+                    <div class="comment">
+                        <div class="comment-header">
+                            <span class="comment-author">{{ reply.author.get_full_name|default:reply.author.username }}</span>
+                            <span class="comment-date">{{ reply.created_at|date:"M d, Y \a\t g:i A" }}</span>
+                        </div>
+                        <div class="comment-content">
+                            {{ reply.content|linebreaks }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No comments yet. Be the first to comment!</p>
+        {% endif %}
+    </section>
+    {% endif %}
+</div>
+
+<!-- Enhanced Structured Data -->
+{% enhanced_structured_data post %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Reading Progress Bar
+    const progressBar = document.getElementById('reading-progress');
+    const postContent = document.getElementById('post-content');
+    
+    if (progressBar && postContent) {
+        function updateProgress() {
+            const scrollTop = window.pageYOffset;
+            const docHeight = document.body.scrollHeight - window.innerHeight;
+            const scrollPercent = (scrollTop / docHeight) * 100;
+            progressBar.style.width = Math.min(scrollPercent, 100) + '%';
+        }
+        
+        window.addEventListener('scroll', updateProgress);
+        updateProgress(); // Initial call
+    }
+    
+    // Social sharing click tracking
+    document.querySelectorAll('.social-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            // Track social sharing (you can send this to analytics)
+            const platform = this.classList[1]; // twitter, facebook, etc.
+            console.log('Shared on:', platform);
+            
+            // For popup sharing (optional)
+            if (platform !== 'email') {
+                e.preventDefault();
+                const url = this.href;
+                const width = 600;
+                const height = 400;
+                const left = (screen.width - width) / 2;
+                const top = (screen.height - height) / 2;
+                
+                window.open(url, 'share', `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`);
+            }
+        });
+    });
+    
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Copy link functionality (optional)
+    function copyToClipboard(text) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success message
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-success position-fixed';
+                toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+                toast.textContent = 'Link copied to clipboard!';
+                document.body.appendChild(toast);
+                
+                setTimeout(function() {
+                    document.body.removeChild(toast);
+                }, 3000);
+            });
+        }
+    }
+    
+    // Add copy link button (optional)
+    const socialButtons = document.querySelector('.social-buttons');
+    if (socialButtons) {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'social-btn email';
+        copyBtn.innerHTML = '<i class="fas fa-link"></i> Copy Link';
+        copyBtn.addEventListener('click', function() {
+            copyToClipboard(window.location.href);
+        });
+        socialButtons.appendChild(copyBtn);
+    }
+});
+</script>
+{% endblock %}

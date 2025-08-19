@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Comment on Your Post</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .comment-box {
+            background: white;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            margin: 15px 0;
+        }
+        .footer {
+            background: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 0.9em;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .meta {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ site_name }}</h1>
+        <h2>New {% if is_reply %}Reply{% else %}Comment{% endif %} on Your Post</h2>
+    </div>
+    
+    <div class="content">
+        <p>Hello {{ post.author.get_full_name|default:post.author.username }},</p>
+        
+        <p>You have received a new {% if is_reply %}reply{% else %}comment{% endif %} on your blog post:</p>
+        
+        <h3><a href="{{ post_url }}" style="color: #007bff; text-decoration: none;">{{ post.title }}</a></h3>
+        
+        <div class="comment-box">
+            <div class="meta">
+                <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                {% if is_reply %}replied{% else %}commented{% endif %} on {{ comment.created_at|date:"F d, Y \a\t g:i A" }}
+            </div>
+            <div class="comment-content">
+                {{ comment.content|linebreaks }}
+            </div>
+        </div>
+        
+        {% if is_reply and comment.parent %}
+        <div style="margin-top: 15px;">
+            <strong>In reply to:</strong>
+            <div style="background: #e9ecef; padding: 10px; margin-top: 5px; border-radius: 3px;">
+                {{ comment.parent.content|truncatewords:20|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{{ comment_url }}" class="btn">View Comment</a>
+            <a href="{{ post_url }}" class="btn">View Post</a>
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 0.9em; color: #6c757d;">
+            You're receiving this email because you're the author of the blog post. 
+            You can manage your email preferences in your profile settings.
+        </p>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; {{ site_name }} - Personal Blog System</p>
+        <p>This is an automated message, please do not reply to this email.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% load seo_tags %}
+{% comment %}
+SEO meta tags template for inclusion in page head.
+Usage: {% seo_meta_tags post %}
+{% endcomment %}
+
+{% if object %}
+    {% meta_title object %}
+    {% meta_description object %}
+    {% meta_keywords object %}
+    {% canonical_url object request %}
+    {% og_tags object request %}
+    {% twitter_card_tags object request %}
+    {% structured_data object %}
+{% endif %}

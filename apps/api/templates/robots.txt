@@ -1,0 +1,37 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: {{ request.build_absolute_uri }}/sitemap.xml
+Sitemap: {{ request.build_absolute_uri }}/sitemap-posts.xml
+Sitemap: {{ request.build_absolute_uri }}/sitemap-categories.xml
+Sitemap: {{ request.build_absolute_uri }}/sitemap-tags.xml
+Sitemap: {{ request.build_absolute_uri }}/sitemap-news.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /accounts/
+Disallow: /api/
+Disallow: /media/private/
+Disallow: /ckeditor/
+Disallow: /analytics/
+Disallow: /core/
+Disallow: /security/
+
+# Allow specific API endpoints for search engines
+Allow: /api/v1/posts/
+Allow: /api/v1/categories/
+Allow: /api/v1/tags/
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Specific rules for different bots
+User-agent: Googlebot
+Crawl-delay: 0
+
+User-agent: Bingbot
+Crawl-delay: 1
+
+User-agent: Slurp
+Crawl-delay: 2

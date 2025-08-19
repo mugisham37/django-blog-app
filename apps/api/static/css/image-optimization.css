@@ -1,0 +1,376 @@
+/**
+ * CSS for image optimization, lazy loading, and responsive images
+ * Django Personal Blog System
+ */
+
+/* Lazy Image Loading Styles */
+.lazy-image-container {
+    position: relative;
+    overflow: hidden;
+    background-color: #f8f9fa;
+}
+
+.lazy-image-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f0f0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.lazy-image-placeholder.loading {
+    background-color: #e9ecef;
+}
+
+.lazy-image-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.lazy-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.lazy-image.loaded {
+    opacity: 1;
+}
+
+.lazy-image.error {
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+.image-error {
+    color: #dc3545;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Responsive Image Styles */
+.responsive-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.responsive-image.loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Avatar Styles */
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e9ecef;
+    transition: border-color 0.2s ease;
+}
+
+.avatar:hover {
+    border-color: #007bff;
+}
+
+.avatar.small {
+    width: 50px;
+    height: 50px;
+}
+
+.avatar.medium {
+    width: 100px;
+    height: 100px;
+}
+
+.avatar.large {
+    width: 200px;
+    height: 200px;
+}
+
+/* Category Image Styles */
+.category-image {
+    object-fit: cover;
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+}
+
+.category-image:hover {
+    transform: scale(1.05);
+}
+
+.category-image.thumbnail {
+    width: 100px;
+    height: 100px;
+}
+
+.category-image.card {
+    width: 100%;
+    height: 200px;
+}
+
+.category-image.banner {
+    width: 100%;
+    height: 300px;
+}
+
+/* Post Featured Image Styles */
+.post-featured-image {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+.post-featured-image:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.post-featured-image.hero {
+    height: 400px;
+    object-fit: cover;
+}
+
+.post-featured-image.card {
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Infinite Scroll Styles */
+.infinite-scroll-loading {
+    padding: 40px 20px;
+    text-align: center;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    color: #6c757d;
+}
+
+.loading-spinner span {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.loading-error {
+    color: #dc3545;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.retry-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+    background-color: #0056b3;
+}
+
+.loading-end {
+    color: #6c757d;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Post List Styles */
+.post-list {
+    display: grid;
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.post-list.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.post-list.end-reached {
+    margin-bottom: 20px;
+}
+
+.post-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.post-card-image {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+}
+
+.post-card-content {
+    padding: 20px;
+}
+
+.post-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    line-height: 1.3;
+}
+
+.post-card-excerpt {
+    color: #6c757d;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.post-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* WebP Support Detection */
+.webp .webp-image {
+    display: block;
+}
+
+.webp .fallback-image {
+    display: none;
+}
+
+.no-webp .webp-image {
+    display: none;
+}
+
+.no-webp .fallback-image {
+    display: block;
+}
+
+/* Progressive Enhancement */
+@supports (object-fit: cover) {
+    .lazy-image,
+    .responsive-image,
+    .post-featured-image {
+        object-fit: cover;
+    }
+}
+
+/* High DPI Display Support */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .avatar.small {
+        background-size: 100px 100px;
+    }
+    
+    .avatar.medium {
+        background-size: 200px 200px;
+    }
+    
+    .avatar.large {
+        background-size: 400px 400px;
+    }
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .post-card-image {
+        height: 150px;
+    }
+    
+    .post-card-content {
+        padding: 15px;
+    }
+    
+    .post-card-title {
+        font-size: 1.1rem;
+    }
+    
+    .infinite-scroll-loading {
+        padding: 30px 15px;
+    }
+    
+    .spinner {
+        width: 30px;
+        height: 30px;
+        border-width: 2px;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .lazy-image,
+    .lazy-image-placeholder,
+    .post-card,
+    .category-image,
+    .post-featured-image {
+        transition: none;
+    }
+    
+    .spinner {
+        animation: none;
+    }
+    
+    .loading {
+        animation: none;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .lazy-image-placeholder,
+    .infinite-scroll-loading,
+    .loading-spinner {
+        display: none;
+    }
+    
+    .lazy-image {
+        opacity: 1;
+    }
+}

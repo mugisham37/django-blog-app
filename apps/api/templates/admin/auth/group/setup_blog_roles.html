@@ -1,0 +1,128 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='auth' %}">{% trans 'Authentication and Authorization' %}</a>
+&rsaquo; <a href="{% url 'admin:auth_group_changelist' %}">{% trans 'Groups' %}</a>
+&rsaquo; {% trans 'Setup Blog Roles' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="module aligned">
+    <h2>{% trans 'Current Blog Roles' %}</h2>
+    {% if existing_groups %}
+        <div class="form-row">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">{% trans 'Role Name' %}</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">{% trans 'Permissions' %}</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">{% trans 'Users' %}</th>
+                        <th style="padding: 10px; border: 1px solid #dee2e6;">{% trans 'Actions' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in existing_groups %}
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">
+                            <span style="background-color: 
+                                {% if group.name == 'Authors' %}blue
+                                {% elif group.name == 'Editors' %}green
+                                {% elif group.name == 'Administrators' %}red
+                                {% else %}gray{% endif %}; 
+                                color: white; padding: 3px 8px; border-radius: 3px;">
+                                {{ group.name }}
+                            </span>
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">{{ group.permissions.count }}</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">{{ group.user_set.count }}</td>
+                        <td style="padding: 10px; border: 1px solid #dee2e6;">
+                            <a href="{% url 'admin:auth_group_change' group.pk %}" class="button">{% trans 'Edit' %}</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>{% trans 'No blog roles have been created yet.' %}</p>
+    {% endif %}
+</div>
+
+<div class="module aligned">
+    <h2>{% trans 'Blog Role Definitions' %}</h2>
+    <div class="form-row">
+        <div>
+            {% for role in blog_roles %}
+                <h3 style="color: 
+                    {% if role == 'Authors' %}blue
+                    {% elif role == 'Editors' %}green
+                    {% elif role == 'Administrators' %}red
+                    {% else %}gray{% endif %};">
+                    {{ role }}
+                </h3>
+                {% if role == 'Authors' %}
+                    <ul>
+                        <li>{% trans 'Create and edit own blog posts' %}</li>
+                        <li>{% trans 'Publish and schedule own posts' %}</li>
+                        <li>{% trans 'Create tags' %}</li>
+                        <li>{% trans 'View categories' %}</li>
+                        <li>{% trans 'Add and edit own comments' %}</li>
+                    </ul>
+                {% elif role == 'Editors' %}
+                    <ul>
+                        <li>{% trans 'All Author permissions' %}</li>
+                        <li>{% trans 'Edit and delete all posts' %}</li>
+                        <li>{% trans 'Feature posts' %}</li>
+                        <li>{% trans 'Manage categories and tags' %}</li>
+                        <li>{% trans 'Moderate comments' %}</li>
+                        <li>{% trans 'View basic analytics' %}</li>
+                    </ul>
+                {% elif role == 'Administrators' %}
+                    <ul>
+                        <li>{% trans 'All Editor permissions' %}</li>
+                        <li>{% trans 'Manage users and assign roles' %}</li>
+                        <li>{% trans 'View and export analytics' %}</li>
+                        <li>{% trans 'Manage system settings' %}</li>
+                        <li>{% trans 'View system logs' %}</li>
+                        <li>{% trans 'Django admin access' %}</li>
+                    </ul>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="module aligned">
+    <h2>{% trans 'Setup Process' %}</h2>
+    <div class="form-row">
+        <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; border-radius: 5px;">
+            <p>{% trans 'This operation will:' %}</p>
+            <ol>
+                <li>{% trans 'Create custom permissions for blog functionality' %}</li>
+                <li>{% trans 'Create the three blog role groups if they do not exist' %}</li>
+                <li>{% trans 'Assign appropriate permissions to each group' %}</li>
+                <li>{% trans 'Update existing groups with new permissions if needed' %}</li>
+            </ol>
+            <p><strong>{% trans 'Note:' %}</strong> {% trans 'Existing user assignments to groups will not be affected.' %}</p>
+        </div>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="submit-row">
+        <button type="submit" class="button" style="background-color: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer;">
+            {% trans 'Create/Update Blog Roles' %}
+        </button>
+        <a href="{% url 'admin:auth_group_changelist' %}" class="button">{% trans 'Cancel' %}</a>
+    </div>
+</form>
+{% endblock %}

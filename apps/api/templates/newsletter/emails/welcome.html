@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to {{ site_name }} Newsletter!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .welcome-badge {
+            background-color: #27ae60;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .highlight-box {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #3498db;
+            color: #ffffff;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .unsubscribe {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">{{ site_name }}</div>
+            <div class="welcome-badge">Welcome!</div>
+            <h1>You're Now Subscribed!</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ subscriber_name }},</p>
+            
+            <p>🎉 <strong>Welcome to the {{ site_name }} newsletter!</strong> Your subscription has been confirmed and you're now part of our community.</p>
+            
+            <div class="highlight-box">
+                <h3>What to Expect:</h3>
+                <ul>
+                    <li>📝 Latest blog posts and articles</li>
+                    <li>💡 Exclusive tips and insights</li>
+                    <li>🚀 Product updates and announcements</li>
+                    <li>📚 Curated content recommendations</li>
+                </ul>
+            </div>
+            
+            <p>We're excited to share our best content with you. Our newsletters are sent regularly with valuable insights and updates that we think you'll love.</p>
+            
+            <div style="text-align: center;">
+                <a href="http{{ 's' if site_domain.startswith('https') else '' }}://{{ site_domain }}" class="button">Visit Our Blog</a>
+            </div>
+            
+            <p>Thank you for joining us on this journey. If you have any questions or feedback, feel free to reply to this email.</p>
+            
+            <p>Best regards,<br>The {{ site_name }} Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This email was sent to {{ subscription.email }}</p>
+            <p>{{ site_name }} - {{ site_domain }}</p>
+            
+            <div class="unsubscribe">
+                <p>Don't want to receive these emails? <a href="{{ unsubscribe_url }}">Unsubscribe</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

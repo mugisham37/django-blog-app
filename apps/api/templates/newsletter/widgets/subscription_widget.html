@@ -1,0 +1,288 @@
+{% load static %}
+
+<!-- Newsletter Subscription Widget -->
+<div class="newsletter-widget" id="newsletter-widget">
+    <div class="newsletter-widget-content">
+        <div class="newsletter-icon">
+            <i class="fas fa-envelope"></i>
+        </div>
+        
+        <h4 class="newsletter-title">Stay Updated!</h4>
+        <p class="newsletter-description">
+            Get the latest blog posts and updates delivered directly to your inbox.
+        </p>
+        
+        <form id="newsletter-widget-form" class="newsletter-widget-form" method="post" action="{% url 'newsletter:ajax_subscribe' %}">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <div class="input-group">
+                    <input 
+                        type="email" 
+                        name="email" 
+                        class="form-control newsletter-email" 
+                        placeholder="Enter your email address"
+                        required
+                    >
+                    <button type="submit" class="btn btn-primary newsletter-submit">
+                        <i class="fas fa-paper-plane"></i>
+                        <span class="btn-text">Subscribe</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="form-check">
+                    <input 
+                        type="checkbox" 
+                        name="privacy_consent" 
+                        class="form-check-input" 
+                        id="newsletter-privacy-consent"
+                        required
+                    >
+                    <label class="form-check-label" for="newsletter-privacy-consent">
+                        I agree to receive newsletter emails
+                    </label>
+                </div>
+            </div>
+            
+            <input type="hidden" name="source" value="widget">
+        </form>
+        
+        <div id="newsletter-widget-message" class="newsletter-message" style="display: none;"></div>
+        
+        <p class="newsletter-privacy">
+            <i class="fas fa-shield-alt"></i>
+            No spam, unsubscribe anytime.
+        </p>
+    </div>
+</div>
+
+<style>
+.newsletter-widget {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin: 2rem 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.newsletter-widget-content {
+    text-align: center;
+}
+
+.newsletter-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.newsletter-title {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.newsletter-description {
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+.newsletter-widget-form .input-group {
+    margin-bottom: 1rem;
+}
+
+.newsletter-widget-form .form-control {
+    border: none;
+    border-radius: 25px 0 0 25px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+.newsletter-widget-form .form-control:focus {
+    box-shadow: none;
+    border-color: transparent;
+}
+
+.newsletter-submit {
+    border-radius: 0 25px 25px 0;
+    border: none;
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.newsletter-submit:hover {
+    background-color: rgba(255,255,255,0.3);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.newsletter-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.newsletter-widget .form-check {
+    margin-bottom: 1rem;
+}
+
+.newsletter-widget .form-check-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    cursor: pointer;
+}
+
+.newsletter-widget .form-check-input {
+    margin-right: 0.5rem;
+}
+
+.newsletter-message {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.newsletter-message.success {
+    background-color: rgba(40, 167, 69, 0.2);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    color: #28a745;
+}
+
+.newsletter-message.error {
+    background-color: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: #dc3545;
+}
+
+.newsletter-privacy {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+.newsletter-privacy i {
+    margin-right: 0.25rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .newsletter-widget {
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    .newsletter-widget-form .input-group {
+        flex-direction: column;
+    }
+    
+    .newsletter-widget-form .form-control {
+        border-radius: 25px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .newsletter-submit {
+        border-radius: 25px;
+        width: 100%;
+    }
+}
+
+/* Animation for loading state */
+.newsletter-submit .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('newsletter-widget-form');
+    const submitBtn = form.querySelector('.newsletter-submit');
+    const messageDiv = document.getElementById('newsletter-widget-message');
+    const emailInput = form.querySelector('.newsletter-email');
+    const consentCheckbox = form.querySelector('#newsletter-privacy-consent');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate form
+        if (!emailInput.value || !consentCheckbox.checked) {
+            showMessage('Please fill in all required fields.', 'error');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span class="btn-text">Subscribing...</span>';
+        
+        // Prepare form data
+        const formData = new FormData(form);
+        
+        // Send AJAX request
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                form.reset();
+            } else {
+                if (data.errors) {
+                    const errorMessages = Object.values(data.errors).join(' ');
+                    showMessage(errorMessages, 'error');
+                } else {
+                    showMessage(data.message || 'An error occurred. Please try again.', 'error');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Newsletter subscription error:', error);
+            showMessage('An error occurred. Please try again.', 'error');
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> <span class="btn-text">Subscribe</span>';
+        });
+    });
+    
+    function showMessage(message, type) {
+        messageDiv.textContent = message;
+        messageDiv.className = `newsletter-message ${type}`;
+        messageDiv.style.display = 'block';
+        
+        // Hide message after 5 seconds
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 5000);
+    }
+    
+    // Email validation
+    emailInput.addEventListener('blur', function() {
+        const email = this.value;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (email && !emailRegex.test(email)) {
+            this.style.borderColor = '#dc3545';
+            showMessage('Please enter a valid email address.', 'error');
+        } else {
+            this.style.borderColor = '';
+        }
+    });
+});
+</script>

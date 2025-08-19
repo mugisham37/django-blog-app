@@ -1,0 +1,292 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Create Preview Token: {{ post.title }}{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .preview-form {
+            max-width: 600px;
+            margin: 20px 0;
+        }
+        
+        .form-row {
+            margin-bottom: 20px;
+        }
+        
+        .form-row label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .form-row input,
+        .form-row textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-row input[type="number"] {
+            width: 120px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .post-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .post-info h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .post-meta {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .preview-buttons {
+            margin-top: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .security-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+        
+        .security-info h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        
+        .existing-tokens {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .existing-tokens h4 {
+            margin: 0 0 10px 0;
+            color: #004085;
+        }
+        
+        .token-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .token-item:last-child {
+            border-bottom: none;
+        }
+        
+        .token-meta {
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module aligned">
+        <h1>Create Preview Token</h1>
+        
+        <div class="post-info">
+            <h3>{{ post.title }}</h3>
+            <div class="post-meta">
+                <strong>Author:</strong> {{ post.author.get_full_name|default:post.author.username }}<br>
+                <strong>Category:</strong> {{ post.category|default:"Uncategorized" }}<br>
+                <strong>Status:</strong> {{ post.get_status_display }}<br>
+                <strong>Created:</strong> {{ post.created_at|date:"F d, Y \a\t g:i A" }}
+            </div>
+        </div>
+        
+        <div class="security-info">
+            <h4>🔒 Security Information</h4>
+            <ul>
+                <li>Preview tokens allow temporary access to unpublished posts</li>
+                <li>Tokens expire automatically after the specified time</li>
+                <li>Access is limited to the maximum number of views you set</li>
+                <li>Share preview links only with trusted individuals</li>
+                <li>Tokens can be deactivated at any time from the admin</li>
+            </ul>
+        </div>
+        
+        {% if existing_tokens %}
+        <div class="existing-tokens">
+            <h4>📋 Existing Preview Tokens</h4>
+            {% for token in existing_tokens %}
+            <div class="token-item">
+                <strong>Token:</strong> {{ token.token|truncatechars:20 }}...<br>
+                <div class="token-meta">
+                    Created: {{ token.created_at|date:"M d, Y g:i A" }} | 
+                    Expires: {{ token.expires_at|date:"M d, Y g:i A" }} | 
+                    Uses: {{ token.access_count }}/{{ token.max_access_count }} | 
+                    Status: {% if token.is_active %}Active{% else %}Inactive{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message|safe }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <form method="post" class="preview-form">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <label for="expires_hours">Expiration (hours):</label>
+                <input type="number" 
+                       id="expires_hours" 
+                       name="expires_hours" 
+                       value="24" 
+                       min="1" 
+                       max="168"
+                       required>
+                <div class="help-text">
+                    Preview link will expire after this many hours (1-168 hours, default: 24)
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <label for="max_access">Maximum Access Count:</label>
+                <input type="number" 
+                       id="max_access" 
+                       name="max_access" 
+                       value="10" 
+                       min="1" 
+                       max="100"
+                       required>
+                <div class="help-text">
+                    Maximum number of times the preview can be accessed (1-100, default: 10)
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <label for="description">Description (optional):</label>
+                <textarea id="description" 
+                          name="description" 
+                          rows="2" 
+                          maxlength="200"
+                          placeholder="Optional description to identify this preview link..."></textarea>
+                <div class="help-text">
+                    Optional description to help you identify this preview link later
+                </div>
+            </div>
+            
+            <div class="preview-buttons">
+                <button type="submit" class="btn btn-primary">
+                    🔗 Create Preview Token
+                </button>
+                <a href="{% url 'admin:blog_post_changelist' %}" class="btn btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add real-time validation feedback
+        const expiresInput = document.getElementById('expires_hours');
+        const maxAccessInput = document.getElementById('max_access');
+        
+        function validateInput(input, min, max) {
+            const value = parseInt(input.value);
+            if (value < min || value > max) {
+                input.style.borderColor = '#dc3545';
+                input.style.backgroundColor = '#f8d7da';
+            } else {
+                input.style.borderColor = '#28a745';
+                input.style.backgroundColor = '#d4edda';
+            }
+        }
+        
+        expiresInput.addEventListener('input', function() {
+            validateInput(this, 1, 168);
+        });
+        
+        maxAccessInput.addEventListener('input', function() {
+            validateInput(this, 1, 100);
+        });
+        
+        // Character counter for description
+        const descriptionTextarea = document.getElementById('description');
+        const helpText = descriptionTextarea.parentNode.querySelector('.help-text');
+        
+        descriptionTextarea.addEventListener('input', function() {
+            const length = this.value.length;
+            const remaining = 200 - length;
+            
+            let color = '#666';
+            if (length > 200) {
+                color = '#dc3545';
+            } else if (length > 180) {
+                color = '#ffc107';
+            }
+            
+            helpText.innerHTML = `
+                Optional description to help you identify this preview link later<br>
+                <span style="color: ${color};">${length}/200 characters</span>
+            `;
+        });
+    });
+</script>
+{% endblock %}

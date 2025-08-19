@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ meta_title }}{% endblock %}
+
+{% block extra_head %}
+    <meta name="description" content="{{ meta_description }}">
+    <style>
+        .registration-container {
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-control {
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+        }
+        .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+            padding: 0.75rem 2rem;
+            border-radius: 5px;
+        }
+        .password-strength {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .strength-weak { color: #dc3545; }
+        .strength-medium { color: #ffc107; }
+        .strength-strong { color: #28a745; }
+        .availability-check {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .available { color: #28a745; }
+        .unavailable { color: #dc3545; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="registration-container">
+        <div class="text-center mb-4">
+            <h2>Create Your Account</h2>
+            <p class="text-muted">Join our community and start sharing your thoughts</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                            {{ form.first_name.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.first_name.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                            {{ form.last_name.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.last_name.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}" class="form-label">
+                    {{ form.username.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.username }}
+                <div id="username-availability" class="availability-check"></div>
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.username.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if form.username.help_text %}
+                    <div class="form-text">{{ form.username.help_text }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}" class="form-label">
+                    {{ form.email.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.email }}
+                <div id="email-availability" class="availability-check"></div>
+                {% if form.email.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.email.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if form.email.help_text %}
+                    <div class="form-text">{{ form.email.help_text }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.password1.id_for_label }}" class="form-label">
+                    {{ form.password1.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.password1 }}
+                <div id="password-strength" class="password-strength"></div>
+                {% if form.password1.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.password1.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if form.password1.help_text %}
+                    <div class="form-text">{{ form.password1.help_text }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.password2.id_for_label }}" class="form-label">
+                    {{ form.password2.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.password2 }}
+                {% if form.password2.errors %}
+                    <div class="text-danger small mt-1">
+                        {% for error in form.password2.errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form.newsletter_subscription }}
+                    <label class="form-check-label" for="{{ form.newsletter_subscription.id_for_label }}">
+                        {{ form.newsletter_subscription.label }}
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form.terms_accepted }}
+                    <label class="form-check-label" for="{{ form.terms_accepted.id_for_label }}">
+                        {{ form.terms_accepted.label }} <span class="text-danger">*</span>
+                    </label>
+                    {% if form.terms_accepted.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.terms_accepted.errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
+            </div>
+        </form>
+
+        <div class="text-center mt-4">
+            <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign in here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameField = document.getElementById('{{ form.username.id_for_label }}');
+    const emailField = document.getElementById('{{ form.email.id_for_label }}');
+    const passwordField = document.getElementById('{{ form.password1.id_for_label }}');
+    
+    // Username availability check
+    let usernameTimeout;
+    usernameField.addEventListener('input', function() {
+        clearTimeout(usernameTimeout);
+        const username = this.value.trim();
+        const availabilityDiv = document.getElementById('username-availability');
+        
+        if (username.length < 3) {
+            availabilityDiv.innerHTML = '';
+            return;
+        }
+        
+        usernameTimeout = setTimeout(function() {
+            fetch(`{% url 'accounts:check_username' %}?username=${encodeURIComponent(username)}`)
+                .then(response => response.json())
+                .then(data => {
+                    availabilityDiv.innerHTML = `<span class="${data.available ? 'available' : 'unavailable'}">${data.message}</span>`;
+                })
+                .catch(error => {
+                    console.error('Error checking username:', error);
+                });
+        }, 500);
+    });
+    
+    // Email availability check
+    let emailTimeout;
+    emailField.addEventListener('input', function() {
+        clearTimeout(emailTimeout);
+        const email = this.value.trim();
+        const availabilityDiv = document.getElementById('email-availability');
+        
+        if (!email.includes('@')) {
+            availabilityDiv.innerHTML = '';
+            return;
+        }
+        
+        emailTimeout = setTimeout(function() {
+            fetch(`{% url 'accounts:check_email' %}?email=${encodeURIComponent(email)}`)
+                .then(response => response.json())
+                .then(data => {
+                    availabilityDiv.innerHTML = `<span class="${data.available ? 'available' : 'unavailable'}">${data.message}</span>`;
+                })
+                .catch(error => {
+                    console.error('Error checking email:', error);
+                });
+        }, 500);
+    });
+    
+    // Password strength indicator
+    passwordField.addEventListener('input', function() {
+        const password = this.value;
+        const strengthDiv = document.getElementById('password-strength');
+        
+        if (password.length === 0) {
+            strengthDiv.innerHTML = '';
+            return;
+        }
+        
+        let score = 0;
+        let feedback = [];
+        
+        // Length check
+        if (password.length >= 8) score++;
+        else feedback.push('at least 8 characters');
+        
+        // Uppercase check
+        if (/[A-Z]/.test(password)) score++;
+        else feedback.push('uppercase letter');
+        
+        // Lowercase check
+        if (/[a-z]/.test(password)) score++;
+        else feedback.push('lowercase letter');
+        
+        // Number check
+        if (/\d/.test(password)) score++;
+        else feedback.push('number');
+        
+        // Special character check
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+        else feedback.push('special character');
+        
+        let strengthClass, strengthText;
+        if (score < 3) {
+            strengthClass = 'strength-weak';
+            strengthText = 'Weak';
+        } else if (score < 5) {
+            strengthClass = 'strength-medium';
+            strengthText = 'Medium';
+        } else {
+            strengthClass = 'strength-strong';
+            strengthText = 'Strong';
+        }
+        
+        let message = `Password strength: <span class="${strengthClass}">${strengthText}</span>`;
+        if (feedback.length > 0) {
+            message += ` (needs: ${feedback.join(', ')})`;
+        }
+        
+        strengthDiv.innerHTML = message;
+    });
+});
+</script>
+{% endblock %}""

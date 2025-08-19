@@ -1,0 +1,1 @@
+# Tests package for Django Personal Blog System

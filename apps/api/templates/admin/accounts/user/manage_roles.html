@@ -1,0 +1,122 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='auth' %}">{% trans 'Authentication and Authorization' %}</a>
+&rsaquo; <a href="{% url 'admin:auth_user_changelist' %}">{% trans 'Users' %}</a>
+&rsaquo; <a href="{% url 'admin:auth_user_change' user.pk %}">{{ user.username }}</a>
+&rsaquo; {% trans 'Manage Roles' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="module aligned">
+    <h2>{% trans 'User Information' %}</h2>
+    <div class="form-row">
+        <div>
+            <strong>{% trans 'Username:' %}</strong> {{ user.username }}<br>
+            <strong>{% trans 'Email:' %}</strong> {{ user.email }}<br>
+            <strong>{% trans 'Full Name:' %}</strong> {{ user.get_full_name|default:user.username }}<br>
+            <strong>{% trans 'Staff Status:' %}</strong> 
+            {% if user.is_staff %}
+                <span style="color: green;">{% trans 'Yes' %}</span>
+            {% else %}
+                <span style="color: red;">{% trans 'No' %}</span>
+            {% endif %}<br>
+            <strong>{% trans 'Active:' %}</strong> 
+            {% if user.is_active %}
+                <span style="color: green;">{% trans 'Yes' %}</span>
+            {% else %}
+                <span style="color: red;">{% trans 'No' %}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="module aligned">
+    <h2>{% trans 'Current Roles' %}</h2>
+    {% if current_roles %}
+        <div class="form-row">
+            {% for role in current_roles %}
+                <div style="display: inline-block; margin: 5px;">
+                    <span style="background-color: 
+                        {% if role == 'Authors' %}blue
+                        {% elif role == 'Editors' %}green
+                        {% elif role == 'Administrators' %}red
+                        {% else %}gray{% endif %}; 
+                        color: white; padding: 5px 10px; border-radius: 3px; margin-right: 10px;">
+                        {{ role }}
+                    </span>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="role" value="{{ role }}">
+                        <button type="submit" class="button" style="background-color: #dc3545; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">
+                            {% trans 'Remove' %}
+                        </button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>{% trans 'No roles assigned to this user.' %}</p>
+    {% endif %}
+</div>
+
+<div class="module aligned">
+    <h2>{% trans 'Assign New Role' %}</h2>
+    {% if available_roles %}
+        <div class="form-row">
+            {% for role in available_roles %}
+                <div style="display: inline-block; margin: 5px;">
+                    <span style="background-color: 
+                        {% if role == 'Authors' %}blue
+                        {% elif role == 'Editors' %}green
+                        {% elif role == 'Administrators' %}red
+                        {% else %}gray{% endif %}; 
+                        color: white; padding: 5px 10px; border-radius: 3px; margin-right: 10px;">
+                        {{ role }}
+                    </span>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add">
+                        <input type="hidden" name="role" value="{{ role }}">
+                        <button type="submit" class="button" style="background-color: #28a745; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">
+                            {% trans 'Assign' %}
+                        </button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>{% trans 'All available roles have been assigned to this user.' %}</p>
+    {% endif %}
+</div>
+
+<div class="module aligned">
+    <h2>{% trans 'Role Descriptions' %}</h2>
+    <div class="form-row">
+        <div>
+            <h3 style="color: blue;">{% trans 'Authors' %}</h3>
+            <p>{% trans 'Can create, edit, and publish their own blog posts. Can create tags and view categories.' %}</p>
+            
+            <h3 style="color: green;">{% trans 'Editors' %}</h3>
+            <p>{% trans 'Can manage all blog content including posts, categories, and tags. Can moderate comments and view basic analytics.' %}</p>
+            
+            <h3 style="color: red;">{% trans 'Administrators' %}</h3>
+            <p>{% trans 'Full system access including user management, role assignment, analytics, and system settings.' %}</p>
+        </div>
+    </div>
+</div>
+
+<div class="submit-row">
+    <a href="{% url 'admin:auth_user_change' user.pk %}" class="button">{% trans 'Back to User' %}</a>
+    <a href="{% url 'admin:auth_user_changelist' %}" class="button">{% trans 'Back to User List' %}</a>
+</div>
+{% endblock %}

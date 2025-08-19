@@ -1,0 +1,26 @@
+{{ site_name }} - Welcome to Our Newsletter!
+
+Hello {{ subscriber_name }},
+
+🎉 Welcome to the {{ site_name }} newsletter! Your subscription has been confirmed and you're now part of our community.
+
+What to Expect:
+• Latest blog posts and articles
+• Exclusive tips and insights  
+• Product updates and announcements
+• Curated content recommendations
+
+We're excited to share our best content with you. Our newsletters are sent regularly with valuable insights and updates that we think you'll love.
+
+Visit our blog: http{{ 's' if site_domain.startswith('https') else '' }}://{{ site_domain }}
+
+Thank you for joining us on this journey. If you have any questions or feedback, feel free to reply to this email.
+
+Best regards,
+The {{ site_name }} Team
+
+---
+This email was sent to {{ subscription.email }}
+{{ site_name }} - {{ site_domain }}
+
+Don't want to receive these emails? Unsubscribe: {{ unsubscribe_url }}

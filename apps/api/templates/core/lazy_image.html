@@ -1,0 +1,17 @@
+{% load static %}
+
+<div class="lazy-image-container {{ css_class }}" data-src="{{ image_url }}" {% if srcset %}data-srcset="{{ srcset }}"{% endif %}>
+    <div class="lazy-image-placeholder" style="background-color: {{ placeholder_color }};">
+        <div class="lazy-image-spinner">
+            <div class="spinner"></div>
+        </div>
+    </div>
+    <img 
+        class="lazy-image" 
+        data-src="{{ image_url }}" 
+        {% if srcset %}data-srcset="{{ srcset }}"{% endif %}
+        alt="{{ alt_text }}"
+        loading="lazy"
+        decoding="async"
+    >
+</div>

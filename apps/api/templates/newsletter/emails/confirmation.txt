@@ -1,0 +1,17 @@
+{{ site_name }} - Confirm Your Newsletter Subscription
+
+Hello{% if subscription.first_name %} {{ subscription.first_name }}{% endif %},
+
+Thank you for subscribing to our newsletter! To complete your subscription and start receiving our updates, please confirm your email address by visiting this link:
+
+{{ confirmation_url }}
+
+Once confirmed, you'll receive our latest blog posts, updates, and exclusive content directly in your inbox.
+
+If you didn't subscribe to this newsletter, you can safely ignore this email.
+
+---
+This email was sent to {{ subscription.email }}
+{{ site_name }} - {{ site_domain }}
+
+Don't want to receive these emails? Unsubscribe: {{ unsubscribe_url }}

@@ -1,0 +1,405 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Bulk Schedule Posts{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .bulk-schedule-form {
+            max-width: 800px;
+            margin: 20px 0;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-section h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+        
+        .form-row {
+            margin-bottom: 15px;
+        }
+        
+        .form-row label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .form-row input[type="datetime-local"] {
+            width: 100%;
+            max-width: 300px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .posts-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        .post-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+        }
+        
+        .post-item:last-child {
+            border-bottom: none;
+        }
+        
+        .post-item input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        
+        .post-info {
+            flex: 1;
+        }
+        
+        .post-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .post-meta {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .post-status {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-draft {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .bulk-actions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .btn:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .selection-info {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            color: #004085;
+        }
+        
+        .select-all-controls {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .timezone-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module aligned">
+        <h1>Bulk Schedule Posts</h1>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <form method="post" class="bulk-schedule-form" id="bulk-schedule-form">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h3>📅 Schedule Settings</h3>
+                
+                <div class="form-row">
+                    <label for="publish_datetime">Publication Date & Time:</label>
+                    <input type="datetime-local" 
+                           id="publish_datetime" 
+                           name="publish_datetime" 
+                           required
+                           min="{{ now|date:'Y-m-d\TH:i' }}">
+                    <div class="help-text">
+                        All selected posts will be scheduled for publication at this date and time.
+                    </div>
+                    <div class="timezone-info">
+                        <strong>Note:</strong> Times are in your server's timezone. 
+                        Current server time: <span id="current-time">{{ now|date:"F d, Y \a\t g:i A T" }}</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <label>
+                        <input type="checkbox" name="send_notifications" checked> 
+                        Send email notifications when posts are published
+                    </label>
+                    <div class="help-text">
+                        Notify subscribers and relevant users when posts are automatically published.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>📝 Select Posts to Schedule</h3>
+                
+                <div class="selection-info" id="selection-info">
+                    <span id="selected-count">0</span> posts selected for scheduling
+                </div>
+                
+                <div class="select-all-controls">
+                    <button type="button" id="select-all" class="btn btn-secondary">Select All</button>
+                    <button type="button" id="select-none" class="btn btn-secondary">Select None</button>
+                    <span style="margin-left: 20px; color: #666;">
+                        Showing {{ posts.count }} draft posts available for scheduling
+                    </span>
+                </div>
+                
+                <div class="posts-list">
+                    {% for post in posts %}
+                    <div class="post-item">
+                        <input type="checkbox" 
+                               name="post_ids" 
+                               value="{{ post.id }}" 
+                               id="post_{{ post.id }}"
+                               class="post-checkbox">
+                        <div class="post-info">
+                            <div class="post-title">{{ post.title }}</div>
+                            <div class="post-meta">
+                                By {{ post.author.get_full_name|default:post.author.username }} | 
+                                {{ post.category|default:"Uncategorized" }} | 
+                                Created: {{ post.created_at|date:"M d, Y" }}
+                                <span class="post-status status-{{ post.status }}">{{ post.get_status_display }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="post-item">
+                        <div class="post-info">
+                            <div class="post-title" style="color: #6c757d; font-style: italic;">
+                                No draft posts available for scheduling
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="bulk-actions">
+                <button type="submit" class="btn btn-primary" id="schedule-button" disabled>
+                    📅 Schedule Selected Posts
+                </button>
+                <a href="{% url 'admin:blog_post_changelist' %}" class="btn btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('bulk-schedule-form');
+        const checkboxes = document.querySelectorAll('.post-checkbox');
+        const selectAllBtn = document.getElementById('select-all');
+        const selectNoneBtn = document.getElementById('select-none');
+        const scheduleButton = document.getElementById('schedule-button');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const datetimeInput = document.getElementById('publish_datetime');
+        
+        // Update selected count and button state
+        function updateSelection() {
+            const selectedCount = document.querySelectorAll('.post-checkbox:checked').length;
+            selectedCountSpan.textContent = selectedCount;
+            scheduleButton.disabled = selectedCount === 0;
+            
+            if (selectedCount === 0) {
+                scheduleButton.textContent = '📅 Schedule Selected Posts';
+            } else {
+                scheduleButton.textContent = `📅 Schedule ${selectedCount} Post${selectedCount > 1 ? 's' : ''}`;
+            }
+        }
+        
+        // Add event listeners to checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelection);
+        });
+        
+        // Select all button
+        selectAllBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            updateSelection();
+        });
+        
+        // Select none button
+        selectNoneBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateSelection();
+        });
+        
+        // Set default datetime to 1 hour from now
+        if (!datetimeInput.value) {
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            
+            datetimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+        
+        // Form validation
+        form.addEventListener('submit', function(e) {
+            const selectedCount = document.querySelectorAll('.post-checkbox:checked').length;
+            const datetime = datetimeInput.value;
+            
+            if (selectedCount === 0) {
+                e.preventDefault();
+                alert('Please select at least one post to schedule.');
+                return;
+            }
+            
+            if (!datetime) {
+                e.preventDefault();
+                alert('Please select a publication date and time.');
+                return;
+            }
+            
+            const selectedDateTime = new Date(datetime);
+            const now = new Date();
+            
+            if (selectedDateTime <= now) {
+                e.preventDefault();
+                alert('Publication date must be in the future.');
+                return;
+            }
+            
+            // Confirmation dialog
+            const confirmMessage = `Are you sure you want to schedule ${selectedCount} post${selectedCount > 1 ? 's' : ''} for publication on ${selectedDateTime.toLocaleDateString()} at ${selectedDateTime.toLocaleTimeString()}?`;
+            
+            if (!confirm(confirmMessage)) {
+                e.preventDefault();
+            }
+        });
+        
+        // Update current time every second
+        function updateCurrentTime() {
+            const now = new Date();
+            const options = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZoneName: 'short'
+            };
+            document.getElementById('current-time').textContent = now.toLocaleDateString('en-US', options);
+        }
+        
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+        
+        // Initialize selection count
+        updateSelection();
+        
+        // Handle URL parameters for pre-selected posts
+        const urlParams = new URLSearchParams(window.location.search);
+        const preSelectedIds = urlParams.get('post_ids');
+        if (preSelectedIds) {
+            const ids = preSelectedIds.split(',');
+            ids.forEach(id => {
+                const checkbox = document.getElementById(`post_${id}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+            updateSelection();
+        }
+    });
+</script>
+{% endblock %}

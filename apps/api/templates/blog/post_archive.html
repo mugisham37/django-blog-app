@@ -1,0 +1,334 @@
+{% extends "blog/base.html" %}
+{% load static %}
+
+{% block title %}Archive: {{ archive_title }} - Blog{% endblock %}
+
+{% block meta_description %}Browse blog posts from {{ archive_title }}.{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h2 mb-1">
+                        <i class="fas fa-archive"></i> Archive: {{ archive_title }}
+                    </h1>
+                    {% if pagination_info %}
+                        <p class="text-muted mb-0">
+                            Showing {{ pagination_info.start_index }}-{{ pagination_info.end_index }} 
+                            of {{ pagination_info.total_posts }} posts
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Breadcrumbs -->
+            {% if breadcrumbs %}
+                <nav aria-label="breadcrumb" class="mb-4">
+                    <ol class="breadcrumb">
+                        {% for crumb in breadcrumbs %}
+                            {% if forloop.last %}
+                                <li class="breadcrumb-item active" aria-current="page">{{ crumb.title }}</li>
+                            {% else %}
+                                <li class="breadcrumb-item">
+                                    <a href="{{ crumb.url }}">{{ crumb.title }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ol>
+                </nav>
+            {% endif %}
+            
+            <!-- Monthly Breakdown (for yearly archives) -->
+            {% if monthly_breakdown %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Monthly Breakdown for {{ archive_year }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for month_data in monthly_breakdown %}
+                                <div class="col-md-3 col-sm-6 mb-2">
+                                    <a href="{% url 'blog:post_archive_month' year=archive_year month=month_data.month.month %}" 
+                                       class="btn btn-outline-primary btn-sm w-100">
+                                        {{ month_data.month|date:"F" }}
+                                        <span class="badge bg-secondary ms-1">{{ month_data.count }}</span>
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Daily Breakdown (for monthly archives) -->
+            {% if daily_breakdown %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Daily Posts in {{ archive_date|date:"F Y" }}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for day_data in daily_breakdown %}
+                                <div class="col-md-2 col-sm-3 col-4 mb-2">
+                                    <div class="text-center">
+                                        <div class="fw-bold">{{ day_data.date|date:"d" }}</div>
+                                        <small class="text-muted">{{ day_data.count }} post{{ day_data.count|pluralize }}</small>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Posts List -->
+            {% if posts %}
+                <div class="posts-archive">
+                    {% for post in posts %}
+                        <article class="card mb-3">
+                            <div class="row g-0">
+                                {% if post.featured_image %}
+                                    <div class="col-md-3">
+                                        <img src="{{ post.featured_image.url }}" 
+                                             class="img-fluid rounded-start h-100 object-cover" 
+                                             alt="{{ post.title }}"
+                                             loading="lazy">
+                                    </div>
+                                    <div class="col-md-9">
+                                {% else %}
+                                    <div class="col-12">
+                                {% endif %}
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div class="post-meta">
+                                                {% if post.category %}
+                                                    <a href="{% url 'blog:post_list' %}?category={{ post.category.slug }}" 
+                                                       class="category-badge text-decoration-none">
+                                                        {{ post.category.name }}
+                                                    </a>
+                                                {% endif %}
+                                                <small class="text-muted ms-2">
+                                                    {{ post.published_at|date:"M d, Y" }} at {{ post.published_at|date:"g:i A" }}
+                                                </small>
+                                            </div>
+                                            {% if post.is_featured %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-star"></i> Featured
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <h5 class="card-title">
+                                            <a href="{{ post.get_absolute_url }}" class="text-decoration-none">
+                                                {{ post.title }}
+                                            </a>
+                                        </h5>
+                                        
+                                        {% if post.excerpt %}
+                                            <p class="card-text">
+                                                {{ post.excerpt|truncatewords:30 }}
+                                            </p>
+                                        {% endif %}
+                                        
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="post-meta-bottom">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock"></i> {{ post.get_reading_time_display }}
+                                                </small>
+                                                <small class="text-muted ms-2">
+                                                    <i class="fas fa-eye"></i> {{ post.view_count }}
+                                                </small>
+                                                <small class="text-muted ms-2">
+                                                    <i class="fas fa-user"></i> {{ post.author.get_full_name|default:post.author.username }}
+                                                </small>
+                                            </div>
+                                            <a href="{{ post.get_absolute_url }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                Read More
+                                            </a>
+                                        </div>
+                                        
+                                        {% if post.tags.exists %}
+                                            <div class="post-tags mt-2">
+                                                {% for tag in post.tags.all|slice:":5" %}
+                                                    <a href="{% url 'blog:post_list' %}?tag={{ tag.slug }}" 
+                                                       class="tag text-decoration-none"
+                                                       style="background-color: {{ tag.color }};">
+                                                        {{ tag.name }}
+                                                    </a>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Archive pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+                
+            {% else %}
+                <!-- No Posts Found -->
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                    <h3 class="text-muted">No posts found</h3>
+                    <p class="text-muted">
+                        No posts were published during {{ archive_title }}.
+                    </p>
+                    <a href="{% url 'blog:post_list' %}" class="btn btn-primary">
+                        Browse All Posts
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Archive Navigation -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar"></i> Archive Navigation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Yearly Archives -->
+                    {% if archive_dates.yearly %}
+                        <h6 class="mb-2">By Year</h6>
+                        <div class="mb-3">
+                            {% for year_data in archive_dates.yearly %}
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <a href="{% url 'blog:post_archive_year' year=year_data.year.year %}" 
+                                       class="text-decoration-none {% if archive_year == year_data.year.year %}fw-bold{% endif %}">
+                                        {{ year_data.year.year }}
+                                    </a>
+                                    <span class="badge bg-secondary">{{ year_data.count }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Monthly Archives -->
+                    {% if archive_dates.monthly %}
+                        <h6 class="mb-2">Recent Months</h6>
+                        <div class="mb-3">
+                            {% for month_data in archive_dates.monthly %}
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <a href="{% url 'blog:post_archive_month' year=month_data.month.year month=month_data.month.month %}" 
+                                       class="text-decoration-none {% if archive_year == month_data.month.year and archive_month == month_data.month.month %}fw-bold{% endif %}">
+                                        {{ month_data.month|date:"F Y" }}
+                                    </a>
+                                    <span class="badge bg-secondary">{{ month_data.count }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="d-grid">
+                        <a href="{% url 'blog:post_archive' %}" class="btn btn-outline-primary btn-sm">
+                            View Full Archive
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Links -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-link"></i> Quick Links
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'blog:post_list' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-home"></i> Latest Posts
+                        </a>
+                        <a href="{% url 'blog:category_list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-folder"></i> Categories
+                        </a>
+                        <a href="{% url 'blog:post_list' %}?featured=1" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-star"></i> Featured Posts
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .object-cover {
+        object-fit: cover;
+    }
+    
+    .posts-archive .card {
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .posts-archive .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .archive-nav-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .archive-nav-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}""

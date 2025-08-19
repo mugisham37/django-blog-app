@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static File Optimization Test</title>
+    <link rel="stylesheet" href="static/css/image-optimization.css">
+</head>
+<body>
+    <h1>Static File Optimization Test</h1>
+    
+    <!-- Test lazy loading -->
+    <div class="lazy-image-container" style="width: 300px; height: 200px;">
+        <div class="lazy-image-placeholder">
+            <div class="lazy-image-spinner">
+                <div class="spinner"></div>
+            </div>
+        </div>
+        <img 
+            class="lazy-image" 
+            data-src="https://via.placeholder.com/300x200/007bff/ffffff?text=Lazy+Image"
+            alt="Test lazy image"
+            loading="lazy"
+        >
+    </div>
+    
+    <!-- Test infinite scroll loading indicator -->
+    <div class="infinite-scroll-loading" style="margin-top: 50px;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <span>Loading more posts...</span>
+        </div>
+    </div>
+    
+    <!-- Test post card -->
+    <div class="post-card" style="margin-top: 50px; max-width: 400px;">
+        <div class="post-card-image">
+            <img src="https://via.placeholder.com/400x200/28a745/ffffff?text=Post+Image" alt="Post image" class="responsive-image">
+        </div>
+        <div class="post-card-content">
+            <h2 class="post-card-title">Test Blog Post</h2>
+            <p class="post-card-excerpt">This is a test excerpt for the blog post to demonstrate the styling.</p>
+            <div class="post-card-meta">
+                <span>Author Name</span>
+                <span>Jan 15, 2024</span>
+                <span>5 min read</span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="static/js/main.js"></script>
+    <script src="static/js/lazy-loading.js"></script>
+    
+    <script>
+        // Test the lazy loading functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test page loaded');
+            console.log('WebP support:', document.documentElement.classList.contains('webp'));
+            
+            // Test lazy image loading after 2 seconds
+            setTimeout(() => {
+                const lazyImage = document.querySelector('.lazy-image');
+                if (lazyImage && window.lazyImageLoader) {
+                    window.lazyImageLoader.loadImage(lazyImage);
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

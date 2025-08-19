@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ meta_title }}{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid white;
+            object-fit: cover;
+        }
+        .profile-stats {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .profile-section {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .completion-bar {
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .completion-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s ease;
+        }
+        .social-links a {
+            display: inline-block;
+            margin: 0.25rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 50%;
+            color: #6c757d;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .social-links a:hover {
+            background: #007bff;
+            color: white;
+            transform: translateY(-2px);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+                <img src="{{ profile.get_avatar_url }}" alt="{{ profile.get_full_name }}" class="profile-avatar">
+            </div>
+            <div class="col-md-9">
+                <h1>{{ profile.get_full_name }}</h1>
+                <p class="lead">@{{ user.username }}</p>
+                {% if profile.bio %}
+                    <p>{{ profile.bio }}</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{% url 'accounts:profile_edit' %}" class="btn btn-light">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </a>
+                    <a href="{% url 'accounts:password_change' %}" class="btn btn-outline-light">
+                        <i class="fas fa-key"></i> Change Password
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Profile Statistics -->
+    <div class="profile-stats">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number">{{ stats.posts_count }}</div>
+                    <div class="stat-label">Posts</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number">{{ stats.comments_count }}</div>
+                    <div class="stat-label">Comments</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number">{{ stats.profile_views }}</div>
+                    <div class="stat-label">Profile Views</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number">{{ stats.completion_percentage }}%</div>
+                    <div class="stat-label">Profile Complete</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Profile Completion -->
+            {% if stats.completion_percentage < 100 %}
+            <div class="profile-section">
+                <h3>Complete Your Profile</h3>
+                <p>Your profile is {{ stats.completion_percentage }}% complete. Add more information to help others connect with you.</p>
+                <div class="completion-bar mb-3">
+                    <div class="completion-progress" style="width: {{ stats.completion_percentage }}%"></div>
+                </div>
+                <div class="row">
+                    {% if not profile.bio %}
+                        <div class="col-md-6 mb-2">
+                            <small class="text-muted"><i class="fas fa-circle text-danger"></i> Add a bio</small>
+                        </div>
+                    {% endif %}
+                    {% if not profile.avatar %}
+                        <div class="col-md-6 mb-2">
+                            <small class="text-muted"><i class="fas fa-circle text-danger"></i> Upload avatar</small>
+                        </div>
+                    {% endif %}
+                    {% if not user.first_name %}
+                        <div class="col-md-6 mb-2">
+                            <small class="text-muted"><i class="fas fa-circle text-danger"></i> Add first name</small>
+                        </div>
+                    {% endif %}
+                    {% if not user.last_name %}
+                        <div class="col-md-6 mb-2">
+                            <small class="text-muted"><i class="fas fa-circle text-danger"></i> Add last name</small>
+                        </div>
+                    {% endif %}
+                    {% if not profile.website %}
+                        <div class="col-md-6 mb-2">
+                            <small class="text-muted"><i class="fas fa-circle text-danger"></i> Add website</small>
+                        </div>
+                    {% endif %}
+                    {% if not profile.location %}
+                        <div class="col-md-6 mb-2">
+                            <small class="text-muted"><i class="fas fa-circle text-danger"></i> Add location</small>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'accounts:profile_edit' %}" class="btn btn-primary">Complete Profile</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Activity -->
+            <div class="profile-section">
+                <h3>Recent Activity</h3>
+                <p class="text-muted">Your recent posts and comments will appear here.</p>
+                <!-- This will be populated when blog and comments apps are ready -->
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Profile Information -->
+            <div class="profile-section">
+                <h4>Profile Information</h4>
+                <div class="mb-3">
+                    <strong>Email:</strong>
+                    <div>{{ user.email }}</div>
+                </div>
+                {% if profile.location %}
+                <div class="mb-3">
+                    <strong>Location:</strong>
+                    <div>{{ profile.location }}</div>
+                </div>
+                {% endif %}
+                {% if profile.website %}
+                <div class="mb-3">
+                    <strong>Website:</strong>
+                    <div><a href="{{ profile.website }}" target="_blank">{{ profile.website }}</a></div>
+                </div>
+                {% endif %}
+                {% if profile.birth_date and profile.show_birth_date %}
+                <div class="mb-3">
+                    <strong>Age:</strong>
+                    <div>{{ profile.get_age }} years old</div>
+                </div>
+                {% endif %}
+                <div class="mb-3">
+                    <strong>Member since:</strong>
+                    <div>{{ user.date_joined|date:"F Y" }}</div>
+                </div>
+            </div>
+
+            <!-- Social Links -->
+            {% if profile.social_links %}
+            <div class="profile-section">
+                <h4>Social Links</h4>
+                <div class="social-links">
+                    {% for platform, url in profile.social_links.items %}
+                        {% if url %}
+                            <a href="{{ url }}" target="_blank" title="{{ platform|title }}">
+                                {% if platform == 'twitter' %}
+                                    <i class="fab fa-twitter"></i>
+                                {% elif platform == 'facebook' %}
+                                    <i class="fab fa-facebook"></i>
+                                {% elif platform == 'linkedin' %}
+                                    <i class="fab fa-linkedin"></i>
+                                {% elif platform == 'github' %}
+                                    <i class="fab fa-github"></i>
+                                {% elif platform == 'instagram' %}
+                                    <i class="fab fa-instagram"></i>
+                                {% elif platform == 'youtube' %}
+                                    <i class="fab fa-youtube"></i>
+                                {% else %}
+                                    <i class="fas fa-link"></i>
+                                {% endif %}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'accounts:social_links' %}" class="btn btn-sm btn-outline-primary">Manage Social Links</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Preferences -->
+            <div class="profile-section">
+                <h4>Preferences</h4>
+                <div class="mb-2">
+                    <i class="fas fa-{{ profile.email_notifications|yesno:'bell,bell-slash' }}"></i>
+                    Email notifications: {{ profile.email_notifications|yesno:"Enabled,Disabled" }}
+                </div>
+                <div class="mb-2">
+                    <i class="fas fa-{{ profile.newsletter_subscription|yesno:'envelope,envelope-open' }}"></i>
+                    Newsletter: {{ profile.newsletter_subscription|yesno:"Subscribed,Not subscribed" }}
+                </div>
+                <div class="mt-3">
+                    <a href="{% url 'accounts:profile_edit' %}" class="btn btn-sm btn-outline-primary">Update Preferences</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate completion progress bar
+    const progressBar = document.querySelector('.completion-progress');
+    if (progressBar) {
+        const targetWidth = progressBar.style.width;
+        progressBar.style.width = '0%';
+        setTimeout(() => {
+            progressBar.style.width = targetWidth;
+        }, 500);
+    }
+});
+</script>
+{% endblock %}

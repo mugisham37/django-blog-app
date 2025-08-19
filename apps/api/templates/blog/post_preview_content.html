@@ -1,0 +1,35 @@
+<!-- Post Preview Content Template for AJAX responses -->
+<div class="post-preview-content">
+    <!-- Post Header -->
+    <header class="post-header mb-4">
+        <h1 class="post-title">{{ post.title }}</h1>
+        
+        <div class="post-meta text-muted mb-3">
+            <div class="d-flex flex-wrap align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-user me-1"></i>
+                    {{ post.author.get_full_name|default:post.author.username }}
+                </div>
+                
+                {% if post.reading_time %}
+                    <div class="me-3">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ post.get_reading_time_display }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Post Excerpt -->
+    {% if post.excerpt %}
+        <div class="post-excerpt mb-4">
+            <p class="lead">{{ post.excerpt }}</p>
+        </div>
+    {% endif %}
+
+    <!-- Post Content -->
+    <div class="post-content">
+        {{ post.content|safe }}
+    </div>
+</div>

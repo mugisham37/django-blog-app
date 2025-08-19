@@ -1,0 +1,197 @@
+{% load static %}
+
+{% if show_banner %}
+<div class="newsletter-banner" id="newsletter-banner">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="newsletter-banner-content">
+                    <i class="fas fa-envelope newsletter-banner-icon"></i>
+                    <div class="newsletter-banner-text">
+                        <h5 class="newsletter-banner-title">
+                            {% if user_subscribed %}
+                                Thank you for subscribing!
+                            {% else %}
+                                Stay in the loop!
+                            {% endif %}
+                        </h5>
+                        <p class="newsletter-banner-description">
+                            {% if user_subscribed %}
+                                You're all set to receive our latest updates and exclusive content.
+                            {% else %}
+                                Get our latest blog posts and exclusive content delivered to your inbox.
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-md-end">
+                {% if not user_subscribed %}
+                    <a href="{% url 'newsletter:subscribe' %}" class="btn btn-light newsletter-banner-btn">
+                        <i class="fas fa-paper-plane me-2"></i>Subscribe Now
+                    </a>
+                {% else %}
+                    <a href="{% url 'newsletter:unsubscribe_form' %}" class="btn btn-outline-light newsletter-banner-btn">
+                        <i class="fas fa-cog me-2"></i>Manage Subscription
+                    </a>
+                {% endif %}
+                <button type="button" class="btn-close newsletter-banner-close" aria-label="Close" onclick="dismissNewsletterBanner()"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.newsletter-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem 0;
+    position: relative;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.newsletter-banner-content {
+    display: flex;
+    align-items: center;
+}
+
+.newsletter-banner-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+    opacity: 0.9;
+}
+
+.newsletter-banner-text {
+    flex: 1;
+}
+
+.newsletter-banner-title {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.newsletter-banner-description {
+    margin-bottom: 0;
+    opacity: 0.9;
+    font-size: 0.9rem;
+}
+
+.newsletter-banner-btn {
+    margin-right: 1rem;
+    font-weight: 600;
+    border-radius: 25px;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.newsletter-banner-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.newsletter-banner-close {
+    background: none;
+    border: none;
+    color: white;
+    opacity: 0.7;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+}
+
+.newsletter-banner-close:hover {
+    opacity: 1;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .newsletter-banner {
+        text-align: center;
+    }
+    
+    .newsletter-banner-content {
+        flex-direction: column;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .newsletter-banner-icon {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .newsletter-banner-btn {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+        width: 100%;
+        max-width: 200px;
+    }
+    
+    .newsletter-banner-close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+    }
+}
+
+/* Animation for banner entrance */
+.newsletter-banner {
+    animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Animation for banner exit */
+.newsletter-banner.dismissing {
+    animation: slideUp 0.3s ease-in forwards;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+}
+</style>
+
+<script>
+function dismissNewsletterBanner() {
+    const banner = document.getElementById('newsletter-banner');
+    if (banner) {
+        banner.classList.add('dismissing');
+        setTimeout(() => {
+            banner.remove();
+        }, 300);
+        
+        // Remember that user dismissed the banner
+        localStorage.setItem('newsletter_banner_dismissed', 'true');
+    }
+}
+
+// Check if banner was previously dismissed
+document.addEventListener('DOMContentLoaded', function() {
+    const bannerDismissed = localStorage.getItem('newsletter_banner_dismissed');
+    if (bannerDismissed) {
+        const banner = document.getElementById('newsletter-banner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+    }
+});
+</script>
+{% endif %}

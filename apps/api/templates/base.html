@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Django Personal Blog{% endblock %}</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="{% block meta_description %}A professional Django-powered personal blog system{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}django, blog, python, web development{% endblock %}">
+    
+    <!-- Enhanced Social Media Meta Tags -->
+    {% load seo_tags %}
+    {% block social_meta_tags %}
+    <!-- Default Open Graph Meta Tags -->
+    <meta property="og:title" content="{% block og_title %}{% block title %}Django Personal Blog{% endblock %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{% block meta_description %}A professional Django-powered personal blog system{% endblock %}{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}">
+    <meta property="og:site_name" content="Django Personal Blog">
+    <meta property="og:locale" content="en_US">
+    {% block og_image %}
+    <meta property="og:image" content="{{ request.build_absolute_uri }}{% static 'images/default-og-image.png' %}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    {% endblock %}
+    
+    <!-- Default Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}{% block title %}Django Personal Blog{% endblock %}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{% block meta_description %}A professional Django-powered personal blog system{% endblock %}{% endblock %}">
+    <meta name="twitter:image" content="{{ request.build_absolute_uri }}{% static 'images/default-og-image.png' %}">
+    <meta name="twitter:image:alt" content="Django Personal Blog">
+    {% endblock %}
+    
+    <!-- CSS -->
+    {% load static compress image_tags %}
+    {% compress css %}
+    <link type="text/x-scss" href="{% static 'scss/main.scss' %}" rel="stylesheet">
+    <link href="{% static 'css/image-optimization.css' %}" rel="stylesheet">
+    {% endcompress %}
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="container">
+                <a href="{% url 'blog:home' %}" class="navbar-brand">Personal Blog</a>
+                <div class="navbar-nav">
+                    <a href="{% url 'blog:home' %}" class="nav-link">Home</a>
+                    <a href="{% url 'blog:post_list' %}" class="nav-link">Blog</a>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'accounts:profile' %}" class="nav-link">Profile</a>
+                        <a href="{% url 'accounts:logout' %}" class="nav-link">Logout</a>
+                    {% else %}
+                        <a href="{% url 'accounts:login' %}" class="nav-link">Login</a>
+                        <a href="{% url 'accounts:register' %}" class="nav-link">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; {% now "Y" %} Django Personal Blog. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    {% compress js %}
+    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/lazy-loading.js' %}"></script>
+    {% endcompress %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

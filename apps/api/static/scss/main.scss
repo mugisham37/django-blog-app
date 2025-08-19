@@ -1,0 +1,436 @@
+/**
+ * Main SCSS file for Django Personal Blog System
+ * This file will be compiled and compressed by Django Compressor
+ */
+
+// Variables
+$primary-color: #007bff;
+$secondary-color: #6c757d;
+$success-color: #28a745;
+$danger-color: #dc3545;
+$warning-color: #ffc107;
+$info-color: #17a2b8;
+$light-color: #f8f9fa;
+$dark-color: #343a40;
+
+$font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$font-size-base: 1rem;
+$line-height-base: 1.5;
+
+$border-radius: 0.375rem;
+$box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+$transition: all 0.15s ease-in-out;
+
+// Mixins
+@mixin button-variant($bg-color, $text-color: white) {
+    background-color: $bg-color;
+    color: $text-color;
+    border: 1px solid $bg-color;
+    padding: 0.5rem 1rem;
+    border-radius: $border-radius;
+    text-decoration: none;
+    display: inline-block;
+    transition: $transition;
+    cursor: pointer;
+    
+    &:hover {
+        background-color: darken($bg-color, 10%);
+        border-color: darken($bg-color, 10%);
+        color: $text-color;
+        text-decoration: none;
+    }
+    
+    &:focus {
+        outline: 0;
+        box-shadow: 0 0 0 0.2rem rgba($bg-color, 0.25);
+    }
+}
+
+@mixin card {
+    background: white;
+    border-radius: $border-radius * 2;
+    box-shadow: $box-shadow;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@mixin responsive-grid($columns: 1, $gap: 1.5rem) {
+    display: grid;
+    grid-template-columns: repeat($columns, 1fr);
+    gap: $gap;
+    
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+// Base styles
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: $font-family-base;
+    font-size: $font-size-base;
+    line-height: $line-height-base;
+    color: $dark-color;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    
+    @media (max-width: 768px) {
+        padding: 0 0.75rem;
+    }
+}
+
+// Typography
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1rem; }
+
+p {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+a {
+    color: $primary-color;
+    text-decoration: none;
+    transition: $transition;
+    
+    &:hover {
+        color: darken($primary-color, 15%);
+        text-decoration: underline;
+    }
+}
+
+// Buttons
+.btn {
+    @include button-variant($primary-color);
+    
+    &.btn-secondary {
+        @include button-variant($secondary-color);
+    }
+    
+    &.btn-success {
+        @include button-variant($success-color);
+    }
+    
+    &.btn-danger {
+        @include button-variant($danger-color);
+    }
+    
+    &.btn-outline {
+        background-color: transparent;
+        color: $primary-color;
+        
+        &:hover {
+            background-color: $primary-color;
+            color: white;
+        }
+    }
+}
+
+// Forms
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-control {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: $font-size-base;
+    line-height: $line-height-base;
+    color: $dark-color;
+    background-color: white;
+    border: 1px solid #ced4da;
+    border-radius: $border-radius;
+    transition: $transition;
+    
+    &:focus {
+        outline: 0;
+        border-color: $primary-color;
+        box-shadow: 0 0 0 0.2rem rgba($primary-color, 0.25);
+    }
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+// Navigation
+.navbar {
+    background-color: white;
+    box-shadow: $box-shadow;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    
+    .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    &-brand {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $primary-color;
+        text-decoration: none;
+        
+        &:hover {
+            color: darken($primary-color, 15%);
+            text-decoration: none;
+        }
+    }
+    
+    &-nav {
+        display: flex;
+        gap: 1.5rem;
+        
+        @media (max-width: 768px) {
+            gap: 1rem;
+        }
+    }
+    
+    .nav-link {
+        color: $secondary-color;
+        font-weight: 500;
+        padding: 0.5rem 0;
+        
+        &:hover {
+            color: $primary-color;
+            text-decoration: none;
+        }
+        
+        &.active {
+            color: $primary-color;
+        }
+    }
+}
+
+// Cards
+.card {
+    @include card;
+    
+    &-header {
+        margin: -1.5rem -1.5rem 1rem -1.5rem;
+        padding: 1rem 1.5rem;
+        background-color: $light-color;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: 600;
+    }
+    
+    &-title {
+        margin-bottom: 0.5rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+    
+    &-text {
+        color: $secondary-color;
+        margin-bottom: 1rem;
+    }
+}
+
+// Alerts
+.alert {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: $border-radius;
+    
+    &-success {
+        color: darken($success-color, 20%);
+        background-color: lighten($success-color, 40%);
+        border-color: lighten($success-color, 30%);
+    }
+    
+    &-danger {
+        color: darken($danger-color, 20%);
+        background-color: lighten($danger-color, 40%);
+        border-color: lighten($danger-color, 30%);
+    }
+    
+    &-warning {
+        color: darken($warning-color, 30%);
+        background-color: lighten($warning-color, 35%);
+        border-color: lighten($warning-color, 25%);
+    }
+    
+    &-info {
+        color: darken($info-color, 20%);
+        background-color: lighten($info-color, 40%);
+        border-color: lighten($info-color, 30%);
+    }
+}
+
+// Blog-specific styles
+.blog-header {
+    text-align: center;
+    padding: 3rem 0;
+    background: linear-gradient(135deg, $primary-color, lighten($primary-color, 20%));
+    color: white;
+    margin-bottom: 3rem;
+    
+    h1 {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        
+        @media (max-width: 768px) {
+            font-size: 2rem;
+        }
+    }
+    
+    p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+}
+
+.post-grid {
+    @include responsive-grid(2, 2rem);
+    
+    @media (min-width: 992px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.post-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: $secondary-color;
+    margin-bottom: 1rem;
+    
+    .author {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .date {
+        &::before {
+            content: "•";
+            margin-right: 0.5rem;
+        }
+    }
+    
+    .reading-time {
+        &::before {
+            content: "•";
+            margin-right: 0.5rem;
+        }
+    }
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    background-color: $primary-color;
+    border-radius: $border-radius;
+    text-decoration: none;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    
+    &:hover {
+        background-color: darken($primary-color, 10%);
+        color: white;
+        text-decoration: none;
+    }
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: $primary-color;
+    background-color: lighten($primary-color, 45%);
+    border: 1px solid lighten($primary-color, 35%);
+    border-radius: $border-radius;
+    text-decoration: none;
+    
+    &:hover {
+        background-color: lighten($primary-color, 40%);
+        border-color: lighten($primary-color, 30%);
+        color: $primary-color;
+        text-decoration: none;
+    }
+}
+
+// Footer
+footer {
+    background-color: $dark-color;
+    color: white;
+    text-align: center;
+    padding: 2rem 0;
+    margin-top: 4rem;
+    
+    p {
+        margin: 0;
+        opacity: 0.8;
+    }
+}
+
+// Utilities
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 1rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+.mb-5 { margin-bottom: 3rem; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 1rem; }
+.mt-4 { margin-top: 1.5rem; }
+.mt-5 { margin-top: 3rem; }
+
+.d-none { display: none; }
+.d-block { display: block; }
+.d-flex { display: flex; }
+.d-grid { display: grid; }
+
+// Responsive utilities
+@media (max-width: 768px) {
+    .d-md-none { display: none; }
+    .d-md-block { display: block; }
+}
+
+@media (min-width: 769px) {
+    .d-md-up-none { display: none; }
+    .d-md-up-block { display: block; }
+}

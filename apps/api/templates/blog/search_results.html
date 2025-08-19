@@ -1,0 +1,563 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ seo_title }}{% endblock %}
+{% block meta_description %}{{ seo_description }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-highlight {
+        background-color: #fff3cd;
+        padding: 0 2px;
+        border-radius: 2px;
+        font-weight: 500;
+    }
+    
+    .search-result-item {
+        border-bottom: 1px solid #e9ecef;
+        padding: 1.5rem 0;
+    }
+    
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+    
+    .search-snippet {
+        color: #6c757d;
+        line-height: 1.6;
+    }
+    
+    .search-meta {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .search-facets {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .facet-item {
+        display: inline-block;
+        margin: 0.25rem 0.5rem 0.25rem 0;
+    }
+    
+    .facet-link {
+        text-decoration: none;
+        color: #495057;
+        font-size: 0.875rem;
+    }
+    
+    .facet-link:hover {
+        color: #007bff;
+        text-decoration: underline;
+    }
+    
+    .facet-count {
+        color: #6c757d;
+        font-size: 0.75rem;
+    }
+    
+    .search-suggestions {
+        background-color: #e7f3ff;
+        border-left: 4px solid #007bff;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 3rem 0;
+        color: #6c757d;
+    }
+    
+    .search-stats {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+    
+    .trending-searches {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .search-autocomplete {
+        position: relative;
+    }
+    
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 0.375rem 0.375rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        z-index: 1000;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .autocomplete-item {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+    }
+    
+    .autocomplete-item:hover,
+    .autocomplete-item.active {
+        background-color: #f8f9fa;
+    }
+    
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Search Header -->
+            <div class="mb-4">
+                <h1 class="h2 mb-2">
+                    {% if query %}
+                        Search Results for "{{ query }}"
+                    {% else %}
+                        Search
+                    {% endif %}
+                </h1>
+                
+                {% if query and results_count > 0 %}
+                    <div class="search-stats">
+                        Found {{ results_count }} result{{ results_count|pluralize }} for "{{ query }}"
+                        {% if page_obj.number > 1 %}
+                            (Page {{ page_obj.number }} of {{ paginator.num_pages }})
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Search Form -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" id="search-form">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="search-autocomplete">
+                                    {{ search_form.q.label_tag }}
+                                    {{ search_form.q }}
+                                    <div id="autocomplete-dropdown" class="autocomplete-dropdown" style="display: none;"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label>&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Advanced Filters (Collapsible) -->
+                        <div class="mt-3">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-filters">
+                                <i class="fas fa-filter"></i> Advanced Filters
+                            </button>
+                        </div>
+                        
+                        <div class="collapse mt-3" id="advanced-filters">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ search_form.category.label_tag }}
+                                    {{ search_form.category }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ search_form.tag.label_tag }}
+                                    {{ search_form.tag }}
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    {{ search_form.author.label_tag }}
+                                    {{ search_form.author }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ search_form.sort.label_tag }}
+                                    {{ search_form.sort }}
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    {{ search_form.date_from.label_tag }}
+                                    {{ search_form.date_from }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ search_form.date_to.label_tag }}
+                                    {{ search_form.date_to }}
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Search Results -->
+            {% if query %}
+                {% if has_results %}
+                    <!-- Search Facets -->
+                    {% if facets.categories or facets.tags or facets.authors %}
+                        <div class="search-facets mb-4">
+                            <h6 class="mb-2">Refine your search:</h6>
+                            
+                            {% if facets.categories %}
+                                <div class="mb-2">
+                                    <strong>Categories:</strong>
+                                    {% for category in facets.categories %}
+                                        <span class="facet-item">
+                                            <a href="?q={{ query }}&category={{ category.slug }}" class="facet-link">
+                                                {{ category.name }} <span class="facet-count">({{ category.count }})</span>
+                                            </a>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if facets.tags %}
+                                <div class="mb-2">
+                                    <strong>Tags:</strong>
+                                    {% for tag in facets.tags %}
+                                        <span class="facet-item">
+                                            <a href="?q={{ query }}&tag={{ tag.slug }}" class="facet-link">
+                                                {{ tag.name }} <span class="facet-count">({{ tag.count }})</span>
+                                            </a>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if facets.authors %}
+                                <div class="mb-2">
+                                    <strong>Authors:</strong>
+                                    {% for author in facets.authors %}
+                                        <span class="facet-item">
+                                            <a href="?q={{ query }}&author={{ author.username }}" class="facet-link">
+                                                {{ author.display_name }} <span class="facet-count">({{ author.count }})</span>
+                                            </a>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Results List -->
+                    <div class="search-results">
+                        {% for result in results %}
+                            <article class="search-result-item" data-post-id="{{ result.post.id }}" data-position="{{ forloop.counter }}">
+                                <h3 class="h5 mb-2">
+                                    <a href="{{ result.post.get_absolute_url }}" class="search-result-link text-decoration-none">
+                                        {{ result.highlighted_title|safe }}
+                                    </a>
+                                </h3>
+                                
+                                <div class="search-meta mb-2">
+                                    <span class="text-muted">
+                                        By {{ result.post.author.get_full_name|default:result.post.author.username }}
+                                        {% if result.post.category %}
+                                            in <a href="{{ result.post.category.get_absolute_url }}" class="text-decoration-none">{{ result.post.category.name }}</a>
+                                        {% endif %}
+                                        • {{ result.post.published_at|date:"M d, Y" }}
+                                        • {{ result.post.reading_time }} min read
+                                        {% if result.post.view_count > 0 %}
+                                            • {{ result.post.view_count }} views
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                
+                                <div class="search-snippet mb-2">
+                                    {{ result.snippet|safe }}
+                                </div>
+                                
+                                {% if result.post.tags.exists %}
+                                    <div class="search-tags">
+                                        {% for tag in result.post.tags.all %}
+                                            <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </article>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                        <nav aria-label="Search results pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?q={{ query }}&page=1{% for key, value in current_filters.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">First</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?q={{ query }}&page={{ page_obj.previous_page_number }}{% for key, value in current_filters.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_obj.number }} of {{ paginator.num_pages }}</span>
+                                </li>
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?q={{ query }}&page={{ page_obj.next_page_number }}{% for key, value in current_filters.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?q={{ query }}&page={{ paginator.num_pages }}{% for key, value in current_filters.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Last</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <!-- No Results -->
+                    <div class="no-results">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <h3>No results found</h3>
+                        <p class="mb-3">
+                            We couldn't find any posts matching "{{ query }}". 
+                            Try different keywords or check out our popular searches below.
+                        </p>
+                        
+                        {% if suggestions %}
+                            <div class="search-suggestions">
+                                <h6>Did you mean:</h6>
+                                {% for suggestion in suggestions %}
+                                    <a href="?q={{ suggestion }}" class="btn btn-outline-primary btn-sm me-2 mb-2">{{ suggestion }}</a>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <!-- Search Landing Page -->
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                    <h2>Search Our Blog</h2>
+                    <p class="lead text-muted mb-4">
+                        Find articles, tutorials, and insights on topics that interest you.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Popular Searches -->
+            {% if popular_searches %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-fire"></i> Popular Searches
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% for search in popular_searches %}
+                            <a href="?q={{ search }}" class="btn btn-outline-secondary btn-sm me-2 mb-2">{{ search }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Trending Searches -->
+            {% if trending_searches %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-trending-up"></i> Trending Searches
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% for search in trending_searches %}
+                            <a href="?q={{ search.query }}" class="btn btn-outline-primary btn-sm me-2 mb-2">{{ search.query }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Search Tips -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> Search Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <strong>Use quotes</strong> for exact phrases: <code>"machine learning"</code>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Combine terms</strong> with AND: <code>python AND django</code>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Exclude terms</strong> with NOT: <code>javascript NOT react</code>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Use wildcards</strong> with *: <code>program*</code>
+                        </li>
+                        <li>
+                            <strong>Filter by category</strong> or tag using the advanced filters
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search autocomplete functionality
+    const searchInput = document.getElementById('id_q');
+    const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+    let autocompleteTimeout;
+    let currentFocus = -1;
+    
+    if (searchInput && autocompleteDropdown) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(autocompleteTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 2) {
+                hideAutocomplete();
+                return;
+            }
+            
+            autocompleteTimeout = setTimeout(() => {
+                fetchSuggestions(query);
+            }, 300);
+        });
+        
+        searchInput.addEventListener('keydown', function(e) {
+            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocus = Math.min(currentFocus + 1, items.length - 1);
+                updateFocus(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocus = Math.max(currentFocus - 1, -1);
+                updateFocus(items);
+            } else if (e.key === 'Enter' && currentFocus >= 0) {
+                e.preventDefault();
+                items[currentFocus].click();
+            } else if (e.key === 'Escape') {
+                hideAutocomplete();
+            }
+        });
+        
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+                hideAutocomplete();
+            }
+        });
+    }
+    
+    function fetchSuggestions(query) {
+        fetch(`/blog/api/search-suggestions/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.suggestions && data.suggestions.length > 0) {
+                    showAutocomplete(data.suggestions);
+                } else {
+                    hideAutocomplete();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching suggestions:', error);
+                hideAutocomplete();
+            });
+    }
+    
+    function showAutocomplete(suggestions) {
+        autocompleteDropdown.innerHTML = '';
+        currentFocus = -1;
+        
+        suggestions.forEach((suggestion, index) => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.textContent = suggestion;
+            item.addEventListener('click', function() {
+                searchInput.value = suggestion;
+                hideAutocomplete();
+                document.getElementById('search-form').submit();
+            });
+            autocompleteDropdown.appendChild(item);
+        });
+        
+        autocompleteDropdown.style.display = 'block';
+    }
+    
+    function hideAutocomplete() {
+        autocompleteDropdown.style.display = 'none';
+        currentFocus = -1;
+    }
+    
+    function updateFocus(items) {
+        items.forEach((item, index) => {
+            item.classList.toggle('active', index === currentFocus);
+        });
+    }
+    
+    // Track search result clicks
+    const searchResultLinks = document.querySelectorAll('.search-result-link');
+    const searchQueryId = {{ search_query_obj.id|default:'null' }};
+    
+    if (searchQueryId) {
+        searchResultLinks.forEach((link, index) => {
+            link.addEventListener('click', function() {
+                const postId = this.closest('[data-post-id]').dataset.postId;
+                const position = this.closest('[data-position]').dataset.position;
+                
+                // Track click asynchronously
+                fetch('/blog/api/track-search-click/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        search_query_id: searchQueryId,
+                        post_id: parseInt(postId),
+                        position: parseInt(position)
+                    })
+                }).catch(error => {
+                    console.error('Error tracking search click:', error);
+                });
+            });
+        });
+    }
+    
+    // Auto-submit form on filter changes
+    const filterSelects = document.querySelectorAll('#search-form select');
+    filterSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            document.getElementById('search-form').submit();
+        });
+    });
+});
+</script>
+{% endblock %}

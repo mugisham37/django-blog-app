@@ -1,0 +1,662 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Analytics Dashboard - {{ site_title|default:"Django Admin" }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .analytics-dashboard {
+        padding: 20px;
+    }
+    
+    .dashboard-widget {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .widget-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #ddd;
+        padding: 15px 20px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .widget-content {
+        padding: 20px;
+    }
+    
+    .metric-card {
+        text-align: center;
+        padding: 20px;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        background: #fff;
+    }
+    
+    .metric-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #007cba;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .metric-change {
+        font-size: 0.8rem;
+        margin-top: 5px;
+    }
+    
+    .metric-change.positive {
+        color: #28a745;
+    }
+    
+    .metric-change.negative {
+        color: #dc3545;
+    }
+    
+    .popular-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .popular-item:last-child {
+        border-bottom: none;
+    }
+    
+    .popular-title {
+        font-weight: 500;
+        color: #333;
+        text-decoration: none;
+    }
+    
+    .popular-title:hover {
+        color: #007cba;
+        text-decoration: none;
+    }
+    
+    .popular-count {
+        background: #007cba;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+    
+    .search-query-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .search-query-item:last-child {
+        border-bottom: none;
+    }
+    
+    .query-text {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .query-stats {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    .status-badge {
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    .status-success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .refresh-info {
+        text-align: right;
+        color: #666;
+        font-size: 0.8rem;
+        margin-bottom: 20px;
+    }
+    
+    .export-actions {
+        margin-top: 15px;
+        text-align: right;
+    }
+    
+    .export-btn {
+        background: #6c757d;
+        color: white;
+        padding: 5px 12px;
+        text-decoration: none;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        margin-left: 5px;
+    }
+    
+    .export-btn:hover {
+        background: #5a6268;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-dashboard">
+    <h1>Analytics Dashboard</h1>
+    
+    <div class="refresh-info">
+        Last updated: <span id="last-updated">{{ "now"|date:"M d, Y H:i" }}</span>
+        <span id="connection-status" style="margin-left: 15px;">● Connecting...</span>
+        <button onclick="refreshDashboard()" style="margin-left: 10px; padding: 2px 8px; font-size: 0.8rem;">Refresh</button>
+    </div>
+    
+    <!-- Key Metrics -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-number">{{ traffic_stats.views.24h|default:0 }}</div>
+            <div class="metric-label">Views (24h)</div>
+            <div class="metric-change positive">
+                +{{ traffic_stats.views.7d|default:0 }} this week
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-number">{{ traffic_stats.unique_visitors.24h|default:0 }}</div>
+            <div class="metric-label">Unique Visitors (24h)</div>
+            <div class="metric-change positive">
+                +{{ traffic_stats.unique_visitors.7d|default:0 }} this week
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-number">{{ traffic_stats.searches.24h|default:0 }}</div>
+            <div class="metric-label">Searches (24h)</div>
+            <div class="metric-change positive">
+                +{{ traffic_stats.searches.7d|default:0 }} this week
+            </div>
+        </div>
+        
+        <div class="metric-card">
+            <div class="metric-number">{{ engagement_stats.engagement_rate|default:0|floatformat:1 }}%</div>
+            <div class="metric-label">Engagement Rate</div>
+            <div class="metric-change">
+                {{ engagement_stats.avg_time_on_page|default:0|floatformat:1 }}s avg time
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-grid">
+        <!-- Popular Posts Widget -->
+        <div class="dashboard-widget">
+            <div class="widget-header">
+                <i class="icon-fire"></i> Popular Posts (Last 7 Days)
+            </div>
+            <div class="widget-content">
+                {% if popular_posts.posts %}
+                    {% for post in popular_posts.posts %}
+                        <div class="popular-item">
+                            <a href="/admin/blog/post/{{ post.post__id }}/change/" class="popular-title">
+                                {{ post.post__title|truncatechars:50 }}
+                            </a>
+                            <span class="popular-count">{{ post.view_count }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        No page views recorded yet.
+                    </p>
+                {% endif %}
+                
+                <div class="export-actions">
+                    <a href="{% url 'admin:analytics_pageview_changelist' %}" class="export-btn">View All</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search Analytics Widget -->
+        <div class="dashboard-widget">
+            <div class="widget-header">
+                <i class="icon-search"></i> Search Analytics (Last 7 Days)
+            </div>
+            <div class="widget-content">
+                <div style="margin-bottom: 20px;">
+                    <strong>Search Performance:</strong>
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Total Searches: <strong>{{ traffic_stats.searches.7d|default:0 }}</strong></li>
+                        <li>Unique Queries: <strong>{{ search_stats.unique_queries|default:0 }}</strong></li>
+                        <li>Avg Results: <strong>{{ search_stats.avg_results|default:0|floatformat:1 }}</strong></li>
+                        <li>Success Rate: <strong>{{ search_stats.success_rate|default:0|floatformat:1 }}%</strong></li>
+                    </ul>
+                </div>
+                
+                <div style="border-top: 1px solid #eee; padding-top: 15px;">
+                    <strong>Recent Popular Searches:</strong>
+                    <div style="margin-top: 10px;">
+                        {% if recent_searches %}
+                            {% for search in recent_searches|slice:":5" %}
+                                <div class="search-query-item">
+                                    <div>
+                                        <div class="query-text">"{{ search.query }}"</div>
+                                        <div class="query-stats">{{ search.results_count }} results</div>
+                                    </div>
+                                    <div>
+                                        {% if search.results_count > 0 %}
+                                            <span class="status-badge status-success">Success</span>
+                                        {% else %}
+                                            <span class="status-badge status-danger">Failed</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p style="color: #666; text-align: center; padding: 10px;">
+                                No recent searches.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="export-actions">
+                    <a href="{% url 'admin:analytics_searchquery_changelist' %}" class="export-btn">View All</a>
+                    <a href="{% url 'admin:analytics_export' %}?type=search&format=csv&days=7" class="export-btn">Export CSV</a>
+                    <a href="{% url 'admin:analytics_export' %}?type=search&format=excel&days=7" class="export-btn">Export Excel</a>
+                    <a href="{% url 'admin:analytics_export' %}?type=search&format=json&days=7" class="export-btn">Export JSON</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Traffic Sources Widget -->
+        <div class="dashboard-widget">
+            <div class="widget-header">
+                <i class="icon-globe"></i> Traffic Sources (Last 7 Days)
+            </div>
+            <div class="widget-content">
+                {% if traffic_stats.top_referrers %}
+                    {% for referrer in traffic_stats.top_referrers %}
+                        <div class="popular-item">
+                            <div>
+                                <div class="popular-title">
+                                    {% if referrer.referrer %}
+                                        {{ referrer.referrer|truncatechars:40 }}
+                                    {% else %}
+                                        Direct Traffic
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 0.8rem; color: #666;">
+                                    {{ referrer.visit_count }} visit{{ referrer.visit_count|pluralize }}
+                                </div>
+                            </div>
+                            <span class="popular-count">{{ referrer.visit_count }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        No referrer data available.
+                    </p>
+                {% endif %}
+                
+                <div class="export-actions">
+                    <a href="{% url 'admin:analytics_pageview_changelist' %}?referrer__isnull=False" class="export-btn">View All</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Engagement Widget -->
+        <div class="dashboard-widget">
+            <div class="widget-header">
+                <i class="icon-users"></i> User Engagement (Last 7 Days)
+            </div>
+            <div class="widget-content">
+                <div class="metrics-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #28a745;">
+                            {{ engagement_stats.avg_time_on_page|default:0|floatformat:1 }}s
+                        </div>
+                        <div style="font-size: 0.8rem; color: #666;">Avg Time on Page</div>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #17a2b8;">
+                            {{ engagement_stats.avg_scroll_depth|default:0|floatformat:1 }}%
+                        </div>
+                        <div style="font-size: 0.8rem; color: #666;">Avg Scroll Depth</div>
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Engaged Sessions:</span>
+                        <strong>{{ engagement_stats.engaged_sessions|default:0 }}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Total Views:</span>
+                        <strong>{{ engagement_stats.total_views|default:0 }}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Engagement Rate:</span>
+                        <strong>{{ engagement_stats.engagement_rate|default:0|floatformat:1 }}%</strong>
+                    </div>
+                </div>
+                
+                <div class="export-actions">
+                    <a href="{% url 'admin:analytics_pageview_changelist' %}?time_on_page__isnull=False" class="export-btn">View Engaged</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="dashboard-widget">
+        <div class="widget-header">
+            <i class="icon-cog"></i> Quick Actions
+        </div>
+        <div class="widget-content">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <a href="{% url 'admin:analytics_searchquery_changelist' %}" 
+                   style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; text-align: center; color: #333;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Search Queries</div>
+                    <div style="font-size: 0.8rem; color: #666;">Manage search analytics</div>
+                </a>
+                
+                <a href="{% url 'admin:analytics_pageview_changelist' %}" 
+                   style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; text-align: center; color: #333;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Page Views</div>
+                    <div style="font-size: 0.8rem; color: #666;">View traffic analytics</div>
+                </a>
+                
+                <a href="{% url 'admin:analytics_searchclickthrough_changelist' %}" 
+                   style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; text-align: center; color: #333;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Search Clicks</div>
+                    <div style="font-size: 0.8rem; color: #666;">Track search effectiveness</div>
+                </a>
+                
+                <a href="{% url 'blog:search_analytics' %}" 
+                   style="padding: 15px; border: 1px solid #ddd; border-radius: 4px; text-decoration: none; text-align: center; color: #333;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">Detailed Reports</div>
+                    <div style="font-size: 0.8rem; color: #666;">Advanced analytics view</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// WebSocket connection for real-time updates
+let analyticsSocket = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/analytics/dashboard/`;
+    
+    analyticsSocket = new WebSocket(wsUrl);
+    
+    analyticsSocket.onopen = function(e) {
+        console.log('Analytics WebSocket connected');
+        reconnectAttempts = 0;
+        updateConnectionStatus(true);
+    };
+    
+    analyticsSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        handleWebSocketMessage(data);
+    };
+    
+    analyticsSocket.onclose = function(e) {
+        console.log('Analytics WebSocket closed');
+        updateConnectionStatus(false);
+        
+        // Attempt to reconnect
+        if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            setTimeout(() => {
+                console.log(`Attempting to reconnect... (${reconnectAttempts}/${maxReconnectAttempts})`);
+                connectWebSocket();
+            }, 5000 * reconnectAttempts);
+        }
+    };
+    
+    analyticsSocket.onerror = function(e) {
+        console.error('Analytics WebSocket error:', e);
+        updateConnectionStatus(false);
+    };
+}
+
+function handleWebSocketMessage(data) {
+    switch(data.type) {
+        case 'dashboard_update':
+            updateDashboardMetrics(data.data);
+            break;
+        case 'analytics_update':
+            updateLiveStats(data.data);
+            break;
+        case 'chart_data':
+            updateChartData(data.chart_type, data.data);
+            break;
+    }
+    
+    // Update last updated time
+    const lastUpdated = document.getElementById('last-updated');
+    if (lastUpdated) {
+        lastUpdated.textContent = new Date().toLocaleString();
+    }
+}
+
+function updateDashboardMetrics(data) {
+    // Update metric cards
+    const metrics = document.querySelectorAll('.metric-number');
+    if (metrics.length >= 4) {
+        metrics[0].textContent = data.total_views || 0;
+        metrics[1].textContent = data.unique_visitors || 0;
+        metrics[2].textContent = data.total_searches || 0;
+        metrics[3].textContent = (data.engagement_rate || 0).toFixed(1) + '%';
+    }
+    
+    // Update popular posts if provided
+    if (data.popular_posts) {
+        updatePopularPosts(data.popular_posts);
+    }
+    
+    // Update recent searches if provided
+    if (data.recent_searches) {
+        updateRecentSearches(data.recent_searches);
+    }
+}
+
+function updateLiveStats(data) {
+    // Update live counters with animation
+    animateCounter('views-24h', data.views_last_24h || 0);
+    animateCounter('unique-visitors-24h', data.unique_visitors_24h || 0);
+    animateCounter('searches-24h', data.searches_last_24h || 0);
+}
+
+function animateCounter(elementId, newValue) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    const currentValue = parseInt(element.textContent) || 0;
+    const increment = Math.ceil((newValue - currentValue) / 10);
+    
+    if (increment !== 0) {
+        const timer = setInterval(() => {
+            const current = parseInt(element.textContent) || 0;
+            if ((increment > 0 && current >= newValue) || (increment < 0 && current <= newValue)) {
+                element.textContent = newValue;
+                clearInterval(timer);
+            } else {
+                element.textContent = current + increment;
+            }
+        }, 50);
+    }
+}
+
+function updatePopularPosts(posts) {
+    const container = document.querySelector('.popular-posts-container');
+    if (!container || !posts.length) return;
+    
+    let html = '';
+    posts.forEach(post => {
+        html += `
+            <div class="popular-item">
+                <a href="/admin/blog/post/${post.post__id}/change/" class="popular-title">
+                    ${post.post__title.substring(0, 50)}${post.post__title.length > 50 ? '...' : ''}
+                </a>
+                <span class="popular-count">${post.view_count}</span>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function updateRecentSearches(searches) {
+    const container = document.querySelector('.recent-searches-container');
+    if (!container || !searches.length) return;
+    
+    let html = '';
+    searches.slice(0, 5).forEach(search => {
+        const statusClass = search.results_count > 0 ? 'status-success' : 'status-danger';
+        const statusText = search.results_count > 0 ? 'Success' : 'Failed';
+        
+        html += `
+            <div class="search-query-item">
+                <div>
+                    <div class="query-text">"${search.query}"</div>
+                    <div class="query-stats">${search.results_count} results</div>
+                </div>
+                <div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function updateConnectionStatus(connected) {
+    const statusIndicator = document.getElementById('connection-status');
+    if (!statusIndicator) return;
+    
+    if (connected) {
+        statusIndicator.innerHTML = '<span style="color: #28a745;">● Live</span>';
+        statusIndicator.title = 'Real-time updates active';
+    } else {
+        statusIndicator.innerHTML = '<span style="color: #dc3545;">● Offline</span>';
+        statusIndicator.title = 'Real-time updates unavailable';
+    }
+}
+
+function refreshDashboard() {
+    // Show loading state
+    const refreshBtn = event.target;
+    const originalText = refreshBtn.textContent;
+    refreshBtn.textContent = 'Refreshing...';
+    refreshBtn.disabled = true;
+    
+    // Request update via WebSocket if connected
+    if (analyticsSocket && analyticsSocket.readyState === WebSocket.OPEN) {
+        analyticsSocket.send(JSON.stringify({
+            type: 'request_update'
+        }));
+        
+        setTimeout(() => {
+            refreshBtn.textContent = originalText;
+            refreshBtn.disabled = false;
+        }, 1000);
+    } else {
+        // Fallback to page reload
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+}
+
+function changePeriod(days) {
+    if (analyticsSocket && analyticsSocket.readyState === WebSocket.OPEN) {
+        analyticsSocket.send(JSON.stringify({
+            type: 'change_period',
+            period: days
+        }));
+    }
+}
+
+// Initialize WebSocket connection when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Update initial last updated time
+    const lastUpdated = document.getElementById('last-updated');
+    if (lastUpdated) {
+        lastUpdated.textContent = new Date().toLocaleString();
+    }
+    
+    // Connect WebSocket for real-time updates
+    connectWebSocket();
+    
+    // Add period filter buttons
+    const periodButtons = document.querySelectorAll('.period-btn');
+    periodButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const days = parseInt(this.dataset.days);
+            changePeriod(days);
+            
+            // Update active state
+            periodButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+});
+
+// Clean up WebSocket connection when page unloads
+window.addEventListener('beforeunload', function() {
+    if (analyticsSocket) {
+        analyticsSocket.close();
+    }
+});
+</script>
+{% endblock %}

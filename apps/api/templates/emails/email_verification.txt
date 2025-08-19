@@ -1,0 +1,17 @@
+Welcome to {{ site_name }}!
+
+Hi {{ user.first_name|default:user.username }},
+
+Thank you for registering with {{ site_name }}! To complete your registration and activate your account, please verify your email address by visiting the following link:
+
+{{ verification_url }}
+
+Important: This verification link will expire in 24 hours for security reasons.
+
+If you didn't create an account with us, please ignore this email.
+
+Welcome to our community!
+The {{ site_name }} Team
+
+---
+This email was sent to {{ user.email }}. If you have any questions, please contact our support team.

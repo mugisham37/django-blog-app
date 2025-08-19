@@ -1,0 +1,330 @@
+{% load static %}
+
+<div class="social-sharing-buttons" data-post-id="{{ object.pk }}">
+    <h6 class="social-sharing-title">Share this article</h6>
+    
+    <div class="social-buttons-container">
+        {% for platform, url in sharing_urls.items %}
+            {% if platform != 'copy' %}
+                <a href="{{ url }}" 
+                   class="social-share-btn social-share-{{ platform }}" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   aria-label="Share on {{ platform|title }}"
+                   data-platform="{{ platform }}"
+                   onclick="trackSocialShare('{{ platform }}', '{{ object.pk }}')">
+                    <i class="fab fa-{{ platform }}" aria-hidden="true"></i>
+                    <span class="social-label">{{ platform|title }}</span>
+                </a>
+            {% endif %}
+        {% endfor %}
+        
+        <!-- Copy Link Button -->
+        <button class="social-share-btn social-share-copy" 
+                onclick="copyToClipboard('{{ sharing_urls.copy }}'); trackSocialShare('copy', '{{ object.pk }}')"
+                aria-label="Copy link to clipboard">
+            <i class="fas fa-link" aria-hidden="true"></i>
+            <span class="social-label">Copy Link</span>
+        </button>
+    </div>
+    
+    <!-- Share Count Display (optional) -->
+    <div class="share-count-container" id="share-count-{{ object.pk }}" style="display: none;">
+        <small class="text-muted">
+            <i class="fas fa-share-alt"></i>
+            <span class="share-count">0</span> shares
+        </small>
+    </div>
+</div>
+
+<style>
+.social-sharing-buttons {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0.75rem;
+    text-align: center;
+    border: 1px solid #dee2e6;
+}
+
+.social-sharing-title {
+    margin-bottom: 1rem;
+    color: #495057;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.social-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.social-share-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    min-width: 120px;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.social-share-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    text-decoration: none;
+    color: white;
+}
+
+.social-share-btn i {
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+}
+
+/* Platform-specific colors */
+.social-share-facebook { background: linear-gradient(135deg, #4267B2 0%, #365899 100%); }
+.social-share-twitter { background: linear-gradient(135deg, #1DA1F2 0%, #0d8bd9 100%); }
+.social-share-linkedin { background: linear-gradient(135deg, #0077B5 0%, #005885 100%); }
+.social-share-reddit { background: linear-gradient(135deg, #FF4500 0%, #cc3700 100%); }
+.social-share-pinterest { background: linear-gradient(135deg, #BD081C 0%, #8c0615 100%); }
+.social-share-whatsapp { background: linear-gradient(135deg, #25D366 0%, #1da851 100%); }
+.social-share-telegram { background: linear-gradient(135deg, #0088CC 0%, #006699 100%); }
+.social-share-email { background: linear-gradient(135deg, #6C757D 0%, #545b62 100%); }
+.social-share-copy { background: linear-gradient(135deg, #28A745 0%, #1e7e34 100%); }
+
+.social-share-btn:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+.share-count-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .social-buttons-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .social-share-btn {
+        width: 100%;
+        max-width: 250px;
+        margin: 0.25rem 0;
+    }
+    
+    .social-sharing-buttons {
+        padding: 1rem;
+    }
+}
+
+/* Animation for copy success */
+.copy-success {
+    background: linear-gradient(135deg, #28A745 0%, #1e7e34 100%) !important;
+    animation: pulse 0.6s ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Loading state */
+.social-share-btn.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.social-share-btn.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+// Social sharing functionality
+function trackSocialShare(platform, postId) {
+    // Track the share event
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'share', {
+            'method': platform,
+            'content_type': 'article',
+            'content_id': postId
+        });
+    }
+    
+    // Send to backend analytics (optional)
+    fetch('/api/analytics/social-share/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            platform: platform,
+            post_id: postId
+        })
+    }).catch(error => {
+        console.log('Analytics tracking failed:', error);
+    });
+    
+    // Update share count display
+    updateShareCount(postId);
+}
+
+function copyToClipboard(text) {
+    const button = event.target.closest('.social-share-copy');
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+            showCopySuccess(button);
+        }).catch(function(err) {
+            fallbackCopyTextToClipboard(text, button);
+        });
+    } else {
+        fallbackCopyTextToClipboard(text, button);
+    }
+}
+
+function fallbackCopyTextToClipboard(text, button) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopySuccess(button);
+        } else {
+            showCopyError(button);
+        }
+    } catch (err) {
+        showCopyError(button);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+function showCopySuccess(button) {
+    const originalText = button.querySelector('.social-label').textContent;
+    const originalClass = button.className;
+    
+    button.classList.add('copy-success');
+    button.querySelector('.social-label').textContent = 'Copied!';
+    button.querySelector('i').className = 'fas fa-check';
+    
+    setTimeout(() => {
+        button.className = originalClass;
+        button.querySelector('.social-label').textContent = originalText;
+        button.querySelector('i').className = 'fas fa-link';
+    }, 2000);
+}
+
+function showCopyError(button) {
+    const originalText = button.querySelector('.social-label').textContent;
+    
+    button.querySelector('.social-label').textContent = 'Failed to copy';
+    
+    setTimeout(() => {
+        button.querySelector('.social-label').textContent = originalText;
+    }, 2000);
+}
+
+function updateShareCount(postId) {
+    fetch(`/api/analytics/share-count/${postId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const countElement = document.getElementById(`share-count-${postId}`);
+            if (countElement && data.total_shares > 0) {
+                countElement.querySelector('.share-count').textContent = data.total_shares;
+                countElement.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.log('Failed to update share count:', error);
+        });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Enhanced sharing for mobile devices
+function enhancedShare(title, text, url) {
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            text: text,
+            url: url
+        }).then(() => {
+            console.log('Thanks for sharing!');
+        }).catch(console.error);
+    }
+}
+
+// Initialize share counts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const postId = document.querySelector('[data-post-id]')?.getAttribute('data-post-id');
+    if (postId) {
+        updateShareCount(postId);
+    }
+    
+    // Add native sharing button for mobile
+    if (navigator.share) {
+        const container = document.querySelector('.social-buttons-container');
+        if (container) {
+            const nativeShareBtn = document.createElement('button');
+            nativeShareBtn.className = 'social-share-btn social-share-native';
+            nativeShareBtn.innerHTML = '<i class="fas fa-share" aria-hidden="true"></i><span class="social-label">Share</span>';
+            nativeShareBtn.onclick = function() {
+                const title = document.title;
+                const url = window.location.href;
+                enhancedShare(title, '', url);
+                trackSocialShare('native', postId);
+            };
+            container.appendChild(nativeShareBtn);
+        }
+    }
+});
+</script>
