@@ -96,7 +96,8 @@
   - **CREATE** type safety validation tests
   - _Requirements: 1.2, 2.4_
 
-- [ ] 8. Create TypeScript API client package
+- [x] 8. Create TypeScript API client package
+
   - **CREATE** packages/api-client/ directory at workspace root with comprehensive API client
   - **CREATE** HTTP client with request/response interceptors
   - **CREATE** service classes for each Django app domain
