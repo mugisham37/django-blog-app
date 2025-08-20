@@ -1,0 +1,291 @@
+# Alertmanager Configuration for Production
+# Handles alert routing, grouping, and notifications
+
+global:
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${ALERT_FROM_EMAIL}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert routing
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default'
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+      routes:
+        - match:
+            alertname: 'DatabaseDown'
+          receiver: 'database-team'
+        - match:
+            alertname: 'ServiceDown'
+          receiver: 'devops-team'
+        - match:
+            alertname: 'HighErrorRate'
+          receiver: 'development-team'
+
+    # Warning alerts - grouped notifications
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_interval: 5m
+      repeat_interval: 30m
+
+    # Security alerts - immediate notification to security team
+    - match:
+        category: security
+      receiver: 'security-team'
+      group_wait: 0s
+      repeat_interval: 15m
+
+    # Performance alerts - grouped notifications
+    - match:
+        category: performance
+      receiver: 'performance-alerts'
+      group_interval: 10m
+      repeat_interval: 1h
+
+# Inhibition rules to suppress redundant alerts
+inhibit_rules:
+  # Suppress warning alerts when critical alerts are firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+  # Suppress individual service alerts when entire cluster is down
+  - source_match:
+      alertname: 'ClusterDown'
+    target_match_re:
+      alertname: '(ServiceDown|DatabaseDown|CacheDown)'
+    equal: ['cluster']
+
+# Receiver configurations
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: '${DEFAULT_ALERT_EMAIL}'
+        subject: '[ALERT] {{ .GroupLabels.alertname }} - {{ .GroupLabels.cluster }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: '${CRITICAL_ALERT_EMAIL}'
+        subject: '[CRITICAL] {{ .GroupLabels.alertname }} - IMMEDIATE ACTION REQUIRED'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          Started: {{ .StartsAt }}
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          Dashboard: {{ .Annotations.dashboard_url }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#alerts-critical'
+        title: 'Critical Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          🚨 *{{ .Annotations.summary }}*
+          
+          *Description:* {{ .Annotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Service:* {{ .Labels.service }}
+          *Instance:* {{ .Labels.instance }}
+          *Started:* {{ .StartsAt }}
+          {{ end }}
+        send_resolved: true
+
+  - name: 'database-team'
+    email_configs:
+      - to: '${DATABASE_TEAM_EMAIL}'
+        subject: '[DATABASE ALERT] {{ .GroupLabels.alertname }}'
+        body: |
+          Database Alert Detected
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Database: {{ .Labels.database }}
+          Instance: {{ .Labels.instance }}
+          Started: {{ .StartsAt }}
+          
+          Troubleshooting Steps:
+          1. Check database connectivity
+          2. Verify disk space and memory usage
+          3. Review recent queries and locks
+          4. Check replication status
+          
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+
+  - name: 'devops-team'
+    email_configs:
+      - to: '${DEVOPS_TEAM_EMAIL}'
+        subject: '[INFRASTRUCTURE ALERT] {{ .GroupLabels.alertname }}'
+        body: |
+          Infrastructure Alert Detected
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Instance: {{ .Labels.instance }}
+          Started: {{ .StartsAt }}
+          
+          Immediate Actions:
+          1. Check service health and logs
+          2. Verify resource utilization
+          3. Check network connectivity
+          4. Review recent deployments
+          
+          Dashboard: {{ .Annotations.dashboard_url }}
+          {{ end }}
+    pagerduty_configs:
+      - routing_key: '${PAGERDUTY_ROUTING_KEY}'
+        description: '{{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
+
+  - name: 'development-team'
+    email_configs:
+      - to: '${DEVELOPMENT_TEAM_EMAIL}'
+        subject: '[APPLICATION ALERT] {{ .GroupLabels.alertname }}'
+        body: |
+          Application Alert Detected
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Error Rate: {{ .Labels.error_rate }}%
+          Started: {{ .StartsAt }}
+          
+          Investigation Steps:
+          1. Check application logs for errors
+          2. Review recent code deployments
+          3. Verify external service dependencies
+          4. Check database query performance
+          
+          Logs: {{ .Annotations.logs_url }}
+          Metrics: {{ .Annotations.metrics_url }}
+          {{ end }}
+
+  - name: 'security-team'
+    email_configs:
+      - to: '${SECURITY_TEAM_EMAIL}'
+        subject: '[SECURITY ALERT] {{ .GroupLabels.alertname }} - POTENTIAL THREAT'
+        body: |
+          🔒 SECURITY ALERT DETECTED 🔒
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Source IP: {{ .Labels.source_ip }}
+          Attack Type: {{ .Labels.attack_type }}
+          Started: {{ .StartsAt }}
+          
+          Immediate Actions Required:
+          1. Investigate source IP and block if necessary
+          2. Review access logs for suspicious activity
+          3. Check for data exfiltration attempts
+          4. Verify system integrity
+          
+          Security Dashboard: {{ .Annotations.security_dashboard_url }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SECURITY_SLACK_WEBHOOK_URL}'
+        channel: '#security-alerts'
+        title: '🔒 Security Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          🚨 *Security Incident Detected*
+          
+          *Alert:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Source IP:* {{ .Labels.source_ip }}
+          *Attack Type:* {{ .Labels.attack_type }}
+          *Started:* {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'warning-alerts'
+    email_configs:
+      - to: '${WARNING_ALERT_EMAIL}'
+        subject: '[WARNING] {{ .GroupLabels.alertname }} - {{ .GroupLabels.cluster }}'
+        body: |
+          Warning Alert Summary
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Service: {{ .Labels.service }}
+          Started: {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'performance-alerts'
+    email_configs:
+      - to: '${PERFORMANCE_TEAM_EMAIL}'
+        subject: '[PERFORMANCE] {{ .GroupLabels.alertname }} - Performance Degradation'
+        body: |
+          Performance Alert Detected
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Service: {{ .Labels.service }}
+          Response Time: {{ .Labels.response_time }}ms
+          Started: {{ .StartsAt }}
+          
+          Performance Investigation:
+          1. Check response time trends
+          2. Review resource utilization
+          3. Analyze slow queries
+          4. Verify cache hit rates
+          
+          Performance Dashboard: {{ .Annotations.performance_dashboard_url }}
+          {{ end }}
+
+# Time intervals for grouping and inhibition
+time_intervals:
+  - name: 'business-hours'
+    time_intervals:
+      - times:
+          - start_time: '09:00'
+            end_time: '17:00'
+        weekdays: ['monday:friday']
+        location: 'UTC'
+
+  - name: 'maintenance-window'
+    time_intervals:
+      - times:
+          - start_time: '02:00'
+            end_time: '04:00'
+        weekdays: ['sunday']
+        location: 'UTC'

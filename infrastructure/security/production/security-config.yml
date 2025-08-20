@@ -1,0 +1,178 @@
+version: '3.8'
+
+services:
+  # Web Application Firewall (WAF)
+  modsecurity:
+    image: owasp/modsecurity:3.0-apache
+    container_name: modsecurity-waf
+    volumes:
+      - ./modsecurity.conf:/etc/modsecurity/modsecurity.conf
+      - ./crs-setup.conf:/etc/modsecurity/crs/crs-setup.conf
+      - ./custom-rules:/etc/modsecurity/custom-rules
+      - ./waf-logs:/var/log/modsec
+    ports:
+      - "8443:443"
+      - "8080:80"
+    environment:
+      - PARANOIA=2
+      - ANOMALY_INBOUND=5
+      - ANOMALY_OUTBOUND=4
+      - BLOCKING_PARANOIA=2
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Intrusion Detection System
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: suricata-ids
+    volumes:
+      - ./suricata.yaml:/etc/suricata/suricata.yaml
+      - ./suricata-rules:/var/lib/suricata/rules
+      - ./suricata-logs:/var/log/suricata
+      - /var/log:/host-logs:ro
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    restart: unless-stopped
+    command: suricata -c /etc/suricata/suricata.yaml -i eth0
+
+  # Vulnerability Scanner
+  openvas:
+    image: mikesplain/openvas
+    container_name: openvas-scanner
+    volumes:
+      - openvas_data:/var/lib/openvas
+      - ./openvas-config:/etc/openvas
+    ports:
+      - "9392:9392"
+    environment:
+      - OV_PASSWORD=${OPENVAS_PASSWORD}
+      - OV_UPDATE=yes
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Security Monitoring
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.7.0
+    container_name: wazuh-manager
+    volumes:
+      - wazuh_api_configuration:/var/ossec/api/configuration
+      - wazuh_etc:/var/ossec/etc
+      - wazuh_logs:/var/ossec/logs
+      - wazuh_queue:/var/ossec/queue
+      - wazuh_var_multigroups:/var/ossec/var/multigroups
+      - wazuh_integrations:/var/ossec/integrations
+      - wazuh_active_response:/var/ossec/active-response/bin
+      - wazuh_agentless:/var/ossec/agentless
+      - wazuh_wodles:/var/ossec/wodles
+      - ./wazuh-config:/wazuh-config-mount
+    ports:
+      - "1514:1514"
+      - "1515:1515"
+      - "514:514/udp"
+      - "55000:55000"
+    environment:
+      - INDEXER_URL=https://wazuh.indexer:9200
+      - INDEXER_USERNAME=admin
+      - INDEXER_PASSWORD=${WAZUH_INDEXER_PASSWORD}
+      - FILEBEAT_SSL_VERIFICATION_MODE=full
+      - SSL_CERTIFICATE_AUTHORITIES=/etc/ssl/root-ca.pem
+      - SSL_CERTIFICATE=/etc/ssl/filebeat.pem
+      - SSL_KEY=/etc/ssl/filebeat.key
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Certificate Management
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./certbot-scripts:/opt/certbot-scripts
+    environment:
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    networks:
+      - security-network
+    restart: "no"
+    command: /opt/certbot-scripts/cert-renewal.sh
+
+  # Secrets Management
+  vault:
+    image: vault:latest
+    container_name: vault
+    volumes:
+      - vault_data:/vault/data
+      - ./vault-config:/vault/config
+      - ./vault-policies:/vault/policies
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG={"storage":{"file":{"path":"/vault/data"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_disable":true}}}
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - security-network
+    restart: unless-stopped
+
+  # Security Audit Logging
+  auditbeat:
+    image: docker.elastic.co/beats/auditbeat:8.11.0
+    container_name: auditbeat
+    user: root
+    volumes:
+      - ./auditbeat.yml:/usr/share/auditbeat/auditbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/hostfs:ro
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    depends_on:
+      - elasticsearch
+    networks:
+      - security-network
+      - logging-network
+    restart: unless-stopped
+    command: auditbeat -e -system.hostfs=/hostfs -strict.perms=false
+    cap_add:
+      - AUDIT_CONTROL
+      - AUDIT_READ
+
+volumes:
+  openvas_data:
+    driver: local
+  wazuh_api_configuration:
+    driver: local
+  wazuh_etc:
+    driver: local
+  wazuh_logs:
+    driver: local
+  wazuh_queue:
+    driver: local
+  wazuh_var_multigroups:
+    driver: local
+  wazuh_integrations:
+    driver: local
+  wazuh_active_response:
+    driver: local
+  wazuh_agentless:
+    driver: local
+  wazuh_wodles:
+    driver: local
+  vault_data:
+    driver: local
+
+networks:
+  security-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+  logging-network:
+    external: true
