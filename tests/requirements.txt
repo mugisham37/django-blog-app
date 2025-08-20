@@ -1,0 +1,48 @@
+# Testing dependencies
+pytest==7.4.3
+pytest-django==4.7.0
+pytest-cov==4.1.0
+pytest-xdist==3.5.0
+pytest-mock==3.12.0
+pytest-asyncio==0.21.1
+pytest-benchmark==4.0.0
+pytest-html==4.1.1
+pytest-json-report==1.5.0
+
+# Factory and fake data
+factory-boy==3.3.0
+faker==20.1.0
+
+# API testing
+requests==2.31.0
+httpx==0.25.2
+
+# Performance testing
+locust==2.17.0
+memory-profiler==0.61.0
+psutil==5.9.6
+
+# Database testing
+pytest-postgresql==5.0.0
+fakeredis==2.20.1
+
+# Mock and fixtures
+responses==0.24.1
+freezegun==1.2.2
+time-machine==2.13.0
+
+# Code quality
+flake8==6.1.0
+black==23.11.0
+isort==5.12.0
+mypy==1.7.1
+
+# Security testing
+bandit==1.7.5
+safety==2.3.5
+
+# Browser testing (for integration with Playwright)
+playwright==1.40.0
+
+# Load testing
+k6==0.1.0  # Python wrapper for k6

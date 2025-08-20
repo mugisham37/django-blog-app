@@ -1,0 +1,31 @@
+{
+  "id": "staging-environment",
+  "name": "Staging",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "https://api-staging.example.com/api/v1",
+      "enabled": true
+    },
+    {
+      "key": "web_url",
+      "value": "https://staging.example.com",
+      "enabled": true
+    },
+    {
+      "key": "test_username",
+      "value": "staging-testuser",
+      "enabled": true
+    },
+    {
+      "key": "test_password",
+      "value": "StagingTestPassword123!",
+      "enabled": true
+    },
+    {
+      "key": "test_email",
+      "value": "staging-test@example.com",
+      "enabled": true
+    }
+  ]
+}

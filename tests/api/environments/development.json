@@ -1,0 +1,31 @@
+{
+  "id": "dev-environment",
+  "name": "Development",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1",
+      "enabled": true
+    },
+    {
+      "key": "web_url",
+      "value": "http://localhost:3000",
+      "enabled": true
+    },
+    {
+      "key": "test_username",
+      "value": "testuser",
+      "enabled": true
+    },
+    {
+      "key": "test_password",
+      "value": "TestPassword123!",
+      "enabled": true
+    },
+    {
+      "key": "test_email",
+      "value": "test@example.com",
+      "enabled": true
+    }
+  ]
+}
