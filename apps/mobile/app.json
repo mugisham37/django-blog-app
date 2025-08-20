@@ -1,0 +1,47 @@
+{
+  "name": "MobileApp",
+  "displayName": "Fullstack Monolith Mobile",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "buildNumber": 1,
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "splash": {
+    "image": "./assets/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff"
+  },
+  "platforms": ["ios", "android"],
+  "ios": {
+    "bundleIdentifier": "com.fullstackmonolith.mobile",
+    "buildNumber": "1.0.0",
+    "supportsTablet": true,
+    "infoPlist": {
+      "NSCameraUsageDescription": "This app uses the camera to take photos for profile pictures and content creation.",
+      "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images for profile pictures and content.",
+      "NSMicrophoneUsageDescription": "This app uses the microphone for voice messages and audio content.",
+      "NSLocationWhenInUseUsageDescription": "This app uses location services to provide location-based features.",
+      "NSFaceIDUsageDescription": "This app uses Face ID for secure authentication.",
+      "NSContactsUsageDescription": "This app accesses contacts to help you connect with friends."
+    }
+  },
+  "android": {
+    "package": "com.fullstackmonolith.mobile",
+    "versionCode": 1,
+    "permissions": [
+      "CAMERA",
+      "WRITE_EXTERNAL_STORAGE",
+      "READ_EXTERNAL_STORAGE",
+      "RECORD_AUDIO",
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION",
+      "USE_FINGERPRINT",
+      "USE_BIOMETRIC",
+      "INTERNET",
+      "ACCESS_NETWORK_STATE",
+      "VIBRATE",
+      "RECEIVE_BOOT_COMPLETED",
+      "READ_CONTACTS"
+    ]
+  }
+}
