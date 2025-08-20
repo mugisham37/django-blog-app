@@ -1,0 +1,294 @@
+# Code Owners Configuration
+# This file defines who owns different parts of the codebase
+# and will be automatically assigned as reviewers for PRs
+
+# ===================================
+# Global Ownership
+# ===================================
+
+# Default owners for everything in the repo
+* @tech-leads @senior-developers
+
+# ===================================
+# Infrastructure and DevOps
+# ===================================
+
+# Docker and containerization
+Dockerfile* @devops-team @infrastructure-team
+docker-compose*.yml @devops-team @infrastructure-team
+.dockerignore @devops-team @infrastructure-team
+
+# Kubernetes and orchestration
+infrastructure/k8s/ @devops-team @infrastructure-team @platform-team
+infrastructure/ @devops-team @infrastructure-team
+
+# Monitoring and observability
+monitoring/ @devops-team @sre-team @infrastructure-team
+
+# CI/CD pipelines
+.github/workflows/ @devops-team @tech-leads
+.github/actions/ @devops-team @tech-leads
+
+# ===================================
+# Backend (Django API)
+# ===================================
+
+# Django application
+apps/api/ @backend-team @python-developers @tech-leads
+
+# Django settings and configuration
+apps/api/config/ @backend-team @tech-leads @devops-team
+apps/api/*/settings/ @backend-team @tech-leads @devops-team
+
+# Database migrations
+apps/api/*/migrations/ @backend-team @database-team @tech-leads
+
+# API views and serializers
+apps/api/*/views/ @backend-team @api-team
+apps/api/*/serializers/ @backend-team @api-team
+apps/api/*/urls.py @backend-team @api-team
+
+# Models and database layer
+apps/api/*/models/ @backend-team @database-team
+
+# Authentication and security
+apps/api/apps/accounts/ @backend-team @security-team @auth-specialists
+
+# ===================================
+# Frontend (Next.js Web)
+# ===================================
+
+# Next.js application
+apps/web/ @frontend-team @react-developers @tech-leads
+
+# Next.js configuration
+apps/web/next.config.js @frontend-team @tech-leads
+apps/web/tailwind.config.js @frontend-team @ui-team
+
+# React components
+apps/web/src/components/ @frontend-team @ui-team
+apps/web/components/ @frontend-team @ui-team
+
+# Pages and routing
+apps/web/src/app/ @frontend-team @react-developers
+apps/web/pages/ @frontend-team @react-developers
+
+# Styles and UI
+apps/web/src/styles/ @frontend-team @ui-team @design-team
+apps/web/styles/ @frontend-team @ui-team @design-team
+
+# State management
+apps/web/src/store/ @frontend-team @react-developers
+apps/web/src/hooks/ @frontend-team @react-developers
+
+# ===================================
+# Mobile Application
+# ===================================
+
+# React Native application
+apps/mobile/ @mobile-team @react-native-developers @tech-leads
+
+# Mobile-specific configuration
+apps/mobile/android/ @mobile-team @android-developers
+apps/mobile/ios/ @mobile-team @ios-developers
+
+# ===================================
+# Shared Packages
+# ===================================
+
+# Core business logic
+packages/core/ @backend-team @tech-leads @architects
+
+# Authentication package
+packages/auth/ @backend-team @security-team @auth-specialists
+
+# Caching package
+packages/cache/ @backend-team @performance-team @infrastructure-team
+
+# Database package
+packages/database/ @backend-team @database-team @tech-leads
+
+# Configuration package
+packages/config/ @backend-team @devops-team @tech-leads
+
+# Type definitions
+packages/types/ @frontend-team @backend-team @typescript-specialists
+
+# API client
+packages/api-client/ @frontend-team @backend-team @api-team
+
+# ===================================
+# Testing
+# ===================================
+
+# Test configuration and setup
+tests/ @qa-team @backend-team @frontend-team @tech-leads
+
+# Unit tests
+tests/unit/ @qa-team @developers
+
+# Integration tests
+tests/integration/ @qa-team @backend-team @api-team
+
+# End-to-end tests
+tests/e2e/ @qa-team @frontend-team @automation-team
+
+# Performance tests
+tests/performance/ @qa-team @performance-team @sre-team
+
+# API tests
+tests/api/ @qa-team @backend-team @api-team
+
+# ===================================
+# Documentation
+# ===================================
+
+# General documentation
+docs/ @tech-writers @tech-leads @product-team
+
+# API documentation
+docs/api/ @backend-team @api-team @tech-writers
+
+# Architecture documentation
+docs/architecture/ @architects @tech-leads @senior-developers
+
+# Security documentation
+docs/security/ @security-team @tech-leads @compliance-team
+
+# Deployment documentation
+docs/deployment/ @devops-team @infrastructure-team @tech-writers
+
+# ===================================
+# Configuration Files
+# ===================================
+
+# Package management
+package.json @tech-leads @frontend-team
+package-lock.json @tech-leads @frontend-team
+requirements/ @tech-leads @backend-team
+requirements.txt @tech-leads @backend-team
+pyproject.toml @tech-leads @backend-team
+
+# Environment configuration
+.env* @devops-team @tech-leads @security-team
+
+# Code quality and linting
+.eslintrc* @frontend-team @tech-leads @code-quality-team
+.prettierrc* @frontend-team @tech-leads @code-quality-team
+setup.cfg @backend-team @tech-leads @code-quality-team
+pyproject.toml @backend-team @tech-leads @code-quality-team
+.pre-commit-config.yaml @tech-leads @code-quality-team @devops-team
+
+# Git configuration
+.gitignore @tech-leads @devops-team
+.gitattributes @tech-leads @devops-team
+
+# IDE configuration
+.vscode/ @tech-leads @developers
+.idea/ @tech-leads @developers
+
+# ===================================
+# Security and Compliance
+# ===================================
+
+# Security policies and configurations
+.safety-policy.json @security-team @tech-leads
+.bandit @security-team @backend-team
+.secrets.baseline @security-team @tech-leads
+
+# Dependency management (security implications)
+**/requirements*.txt @security-team @backend-team @tech-leads
+package*.json @security-team @frontend-team @tech-leads
+
+# ===================================
+# Build and Deployment
+# ===================================
+
+# Makefiles and build scripts
+Makefile @devops-team @tech-leads
+*/Makefile @devops-team @tech-leads
+
+# Build configuration
+webpack.config.js @frontend-team @tech-leads
+vite.config.js @frontend-team @tech-leads
+rollup.config.js @frontend-team @tech-leads
+
+# Deployment scripts
+scripts/ @devops-team @infrastructure-team @tech-leads
+tools/ @devops-team @tech-leads @automation-team
+
+# ===================================
+# Quality Assurance
+# ===================================
+
+# SonarQube configuration
+sonar-project.properties @code-quality-team @tech-leads @qa-team
+
+# Code coverage configuration
+.coveragerc @qa-team @backend-team @tech-leads
+jest.config.js @qa-team @frontend-team @tech-leads
+
+# ===================================
+# Specific File Types
+# ===================================
+
+# TypeScript configuration
+tsconfig*.json @frontend-team @typescript-specialists @tech-leads
+
+# Python type checking
+mypy.ini @backend-team @python-type-specialists @tech-leads
+
+# Database configuration
+**/database.yml @database-team @backend-team @devops-team
+**/db.json @database-team @backend-team @devops-team
+
+# ===================================
+# Emergency Contacts
+# ===================================
+
+# Critical security files (require immediate attention)
+**/secrets* @security-team @ciso @tech-leads
+**/keys* @security-team @ciso @tech-leads
+**/*.pem @security-team @ciso @tech-leads
+**/*.key @security-team @ciso @tech-leads
+
+# Production configuration (require careful review)
+**/production* @tech-leads @devops-team @sre-team @cto
+**/prod* @tech-leads @devops-team @sre-team @cto
+
+# ===================================
+# Team Aliases (Define in GitHub)
+# ===================================
+
+# @tech-leads - Technical leadership team
+# @senior-developers - Senior development team
+# @backend-team - Backend development team
+# @frontend-team - Frontend development team
+# @mobile-team - Mobile development team
+# @devops-team - DevOps and infrastructure team
+# @infrastructure-team - Infrastructure specialists
+# @security-team - Security and compliance team
+# @qa-team - Quality assurance team
+# @database-team - Database specialists
+# @api-team - API development specialists
+# @ui-team - UI/UX development team
+# @performance-team - Performance optimization team
+# @sre-team - Site reliability engineering team
+# @platform-team - Platform engineering team
+# @automation-team - Test automation specialists
+# @code-quality-team - Code quality and standards team
+# @architects - Software architects
+# @tech-writers - Technical documentation team
+# @product-team - Product management team
+# @compliance-team - Compliance and governance team
+# @python-developers - Python specialists
+# @react-developers - React specialists
+# @typescript-specialists - TypeScript specialists
+# @react-native-developers - React Native specialists
+# @android-developers - Android specialists
+# @ios-developers - iOS specialists
+# @auth-specialists - Authentication specialists
+# @python-type-specialists - Python type checking specialists
+# @design-team - Design team
+# @ciso - Chief Information Security Officer
+# @cto - Chief Technology Officer

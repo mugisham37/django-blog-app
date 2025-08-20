@@ -117,6 +117,87 @@ format-packages: ## Format shared package code
 	cd packages/database && black . && isort .
 	cd packages/config && black . && isort .
 
+# Advanced code quality commands
+quality-check: ## Run comprehensive code quality checks
+	@echo "Running comprehensive code quality checks..."
+	$(MAKE) lint
+	$(MAKE) type-check
+	$(MAKE) security-scan
+	$(MAKE) test-coverage
+	node tools/code-quality-validator.js
+
+type-check: ## Run type checking for all code
+	@echo "Running TypeScript type checking..."
+	cd apps/web && npx tsc --noEmit
+	cd packages/api-client && npx tsc --noEmit
+	@echo "Running Python type checking..."
+	cd apps/api && python -m mypy .
+	cd packages/core && python -m mypy .
+	cd packages/auth && python -m mypy .
+	cd packages/cache && python -m mypy .
+	cd packages/database && python -m mypy .
+	cd packages/config && python -m mypy .
+
+security-lint: ## Run security-focused linting
+	@echo "Running security linting..."
+	cd apps/api && python -m bandit -r . -f json -o bandit-report.json || true
+	cd apps/api && python -m safety check --json --output safety-report.json || true
+	cd apps/web && npx eslint --ext .js,.jsx,.ts,.tsx . --config .eslintrc.js --format json --output-file eslint-security-report.json || true
+
+complexity-check: ## Check code complexity
+	@echo "Checking code complexity..."
+	cd apps/api && python -m radon cc . --min B
+	cd apps/web && npx eslint --ext .js,.jsx,.ts,.tsx . --rule "complexity: [error, 10]" || true
+
+dead-code-check: ## Check for dead/unused code
+	@echo "Checking for dead code..."
+	cd apps/api && python -m vulture . || true
+	cd apps/web && npx ts-unused-exports tsconfig.json || true
+
+dependency-check: ## Check for dependency vulnerabilities
+	@echo "Checking dependencies for vulnerabilities..."
+	cd apps/web && npm audit --audit-level moderate
+	cd apps/api && python -m safety check
+	cd apps/api && pip-audit
+
+pre-commit-install: ## Install pre-commit hooks
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+
+pre-commit-run: ## Run pre-commit on all files
+	pre-commit run --all-files
+
+pre-commit-update: ## Update pre-commit hooks
+	pre-commit autoupdate
+
+sonar-scan: ## Run SonarQube analysis
+	@if command -v sonar-scanner >/dev/null 2>&1; then \
+		sonar-scanner; \
+	else \
+		echo "SonarQube scanner not installed. Please install it first."; \
+		echo "See: https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/"; \
+	fi
+
+code-metrics: ## Generate code metrics report
+	@echo "Generating code metrics..."
+	@mkdir -p reports
+	cd apps/api && python -m radon raw . --json > ../../reports/python-raw-metrics.json
+	cd apps/api && python -m radon cc . --json > ../../reports/python-complexity-metrics.json
+	cd apps/api && python -m radon mi . --json > ../../reports/python-maintainability-metrics.json
+	@echo "Code metrics saved to reports/ directory"
+
+setup-code-quality: ## Setup code quality tools
+	@echo "Setting up code quality tools..."
+	@if [ -f "tools/setup-code-quality.ps1" ]; then \
+		powershell -ExecutionPolicy Bypass -File tools/setup-code-quality.ps1; \
+	else \
+		echo "Please run: npm install && pip install -r requirements/development.txt"; \
+		echo "Then run: pre-commit install"; \
+	fi
+
+validate-code-quality: ## Validate code quality configuration
+	node tools/code-quality-validator.js
+
 # Database commands
 db-migrate: ## Run Django migrations
 	cd apps/api && python manage.py migrate
