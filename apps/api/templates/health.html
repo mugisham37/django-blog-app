@@ -2,10 +2,11 @@
 <html>
 <head>
     <title>Health Check</title>
+    <meta charset="utf-8">
 </head>
 <body>
-    <h1>System Status: OK</h1>
-    <p>Django Personal Blog System is running properly.</p>
-    <p>Timestamp: {% now "c" %}</p>
+    <h1>Service Health Check</h1>
+    <p>Django API is running</p>
+    <p>Timestamp: {{ timestamp }}</p>
 </body>
 </html>

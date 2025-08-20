@@ -43,8 +43,8 @@ urlpatterns = [
     path('sitemap-<section>.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain')),
     
-    # Health check
-    path('health/', TemplateView.as_view(template_name='health.html'), name='health_check'),
+    # Health check endpoints
+    path('', include('apps.core.urls', namespace='core')),
 ]
 
 # Serve media files in development

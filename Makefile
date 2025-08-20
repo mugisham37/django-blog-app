@@ -151,20 +151,79 @@ clean-docker: ## Clean Docker containers and images
 docker-build: ## Build Docker images
 	docker-compose build
 
+docker-build-prod: ## Build production Docker images
+	docker-compose -f docker-compose.prod.yml build
+
 docker-up: ## Start Docker containers
 	docker-compose up -d
+
+docker-up-prod: ## Start production Docker containers
+	docker-compose -f docker-compose.prod.yml up -d
 
 docker-down: ## Stop Docker containers
 	docker-compose down
 
+docker-down-prod: ## Stop production Docker containers
+	docker-compose -f docker-compose.prod.yml down
+
 docker-logs: ## View Docker logs
 	docker-compose logs -f
 
+docker-logs-prod: ## View production Docker logs
+	docker-compose -f docker-compose.prod.yml logs -f
+
 docker-shell-api: ## Open shell in Django API container
-	docker-compose exec api bash
+	docker-compose exec django-api bash
 
 docker-shell-web: ## Open shell in Next.js container
-	docker-compose exec web bash
+	docker-compose exec nextjs-web bash
+
+docker-shell-db: ## Open PostgreSQL shell
+	docker-compose exec postgres psql -U postgres -d fullstack_blog
+
+docker-shell-redis: ## Open Redis CLI
+	docker-compose exec redis redis-cli
+
+docker-restart: ## Restart all Docker containers
+	docker-compose restart
+
+docker-restart-api: ## Restart Django API container
+	docker-compose restart django-api
+
+docker-restart-web: ## Restart Next.js container
+	docker-compose restart nextjs-web
+
+docker-clean: ## Clean Docker containers and images
+	docker-compose down --volumes --remove-orphans
+	docker system prune -f
+	docker volume prune -f
+
+docker-clean-all: ## Clean everything Docker related
+	docker-compose down --volumes --remove-orphans
+	docker system prune -af
+	docker volume prune -f
+
+docker-health: ## Check Docker container health
+	docker-compose ps
+	@echo "\nContainer health status:"
+	@docker-compose exec django-api curl -f http://localhost:8000/health/ || echo "Django API unhealthy"
+	@docker-compose exec nextjs-web curl -f http://localhost:3000/api/health || echo "Next.js unhealthy"
+
+docker-migrate: ## Run Django migrations in Docker
+	docker-compose exec django-api python manage.py migrate
+
+docker-collectstatic: ## Collect static files in Docker
+	docker-compose exec django-api python manage.py collectstatic --noinput
+
+docker-createsuperuser: ## Create Django superuser in Docker
+	docker-compose exec django-api python manage.py createsuperuser
+
+docker-backup-db: ## Backup database from Docker
+	docker-compose exec postgres pg_dump -U postgres fullstack_blog > backup_$(shell date +%Y%m%d_%H%M%S).sql
+
+docker-restore-db: ## Restore database to Docker (requires BACKUP_FILE variable)
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "Please specify BACKUP_FILE=filename.sql"; exit 1; fi
+	docker-compose exec -T postgres psql -U postgres fullstack_blog < $(BACKUP_FILE)
 
 # Kubernetes commands
 k8s-deploy: ## Deploy to Kubernetes
