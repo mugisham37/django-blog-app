@@ -61,6 +61,9 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'apps.core.security_headers.HTTPSRedirectMiddleware',
+    'apps.core.security_headers.SecurityHeadersMiddleware',
+    'apps.core.rate_limiting.RateLimitMiddleware',
     'apps.core.middleware.RequestLoggingMiddleware',
     'apps.core.middleware.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -68,6 +71,7 @@ MIDDLEWARE = [
     'apps.core.csrf_protection.EnhancedCSRFMiddleware',
     'apps.core.csrf_protection.CSRFTokenMiddleware',
     'apps.core.csrf_protection.CSRFTokenRotationMiddleware',
+    'apps.core.security_headers.CSPReportingMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
