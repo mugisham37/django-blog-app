@@ -1,0 +1,77 @@
+{
+  "timestamp": "2025-08-20 15:44:08",
+  "total_execution_time": 8.088448524475098,
+  "summary": {
+    "total_test_suites": 5,
+    "passed_suites": 0,
+    "failed_suites": 5,
+    "success_rate": 0.0,
+    "overall_status": "FAILED",
+    "system_health_score": 0,
+    "deployment_ready": true
+  },
+  "test_suite_results": {
+    "Integration Tests": {
+      "status": "failed",
+      "execution_time": 6.032970666885376,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\integration\\final_integration_test.py\", line 18, in <module>\n    import psutil\nModuleNotFoundError: No module named 'psutil'\n",
+      "return_code": 1,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\integration\\final_integration_test.py\", line 18, in <module>\n    import psutil\nModuleNotFoundError: No module named 'psutil'\n"
+    },
+    "Performance Tests": {
+      "status": "failed",
+      "execution_time": 1.0546233654022217,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\performance\\load_testing.py\", line 14, in <module>\n    import psutil\nModuleNotFoundError: No module named 'psutil'\n",
+      "return_code": 1,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\performance\\load_testing.py\", line 14, in <module>\n    import psutil\nModuleNotFoundError: No module named 'psutil'\n"
+    },
+    "Security Tests": {
+      "status": "failed",
+      "execution_time": 0.5284454822540283,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\security\\security_testing.py\", line 1035, in <module>\n    main()\n    ~~~~^^\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\security\\security_testing.py\", line 998, in main\n    print(\"\\U0001f512 Starting Security Testing Suite...\")\n    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.2032.0_x64__qbz5n2kfra8p0\\Lib\\encodings\\cp1252.py\", line 19, in encode\n    return codecs.charmap_encode(input,self.errors,encoding_table)[0]\n           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeEncodeError: 'charmap' codec can't encode character '\\U0001f512' in position 0: character maps to <undefined>\n",
+      "return_code": 1,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\security\\security_testing.py\", line 1035, in <module>\n    main()\n    ~~~~^^\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\security\\security_testing.py\", line 998, in main\n    print(\"\\U0001f512 Starting Security Testing Suite...\")\n    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.2032.0_x64__qbz5n2kfra8p0\\Lib\\encodings\\cp1252.py\", line 19, in encode\n    return codecs.charmap_encode(input,self.errors,encoding_table)[0]\n           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nUnicodeEncodeError: 'charmap' codec can't encode character '\\U0001f512' in position 0: character maps to <undefined>\n"
+    },
+    "E2E Tests": {
+      "status": "failed",
+      "execution_time": 0.2688446044921875,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\e2e\\comprehensive_e2e_test.py\", line 12, in <module>\n    from selenium import webdriver\nModuleNotFoundError: No module named 'selenium'\n",
+      "return_code": 1,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\e2e\\comprehensive_e2e_test.py\", line 12, in <module>\n    from selenium import webdriver\nModuleNotFoundError: No module named 'selenium'\n"
+    },
+    "Database Optimization": {
+      "status": "failed",
+      "execution_time": 0.19637513160705566,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\optimization\\database_optimization.py\", line 12, in <module>\n    import psutil\nModuleNotFoundError: No module named 'psutil'\n",
+      "return_code": 1,
+      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\MUGISHA\\Desktop\\django-taskmanagement-app\\tests\\optimization\\database_optimization.py\", line 12, in <module>\n    import psutil\nModuleNotFoundError: No module named 'psutil'\n"
+    }
+  },
+  "individual_reports": {},
+  "critical_issues": [],
+  "all_recommendations": [],
+  "deployment_assessment": {
+    "ready_for_production": true,
+    "blockers": [],
+    "warnings": [],
+    "recommendations": [
+      "\u2705 System is ready for production deployment",
+      "\ud83d\udd04 Set up monitoring and alerting",
+      "\ud83d\udcca Continue performance monitoring",
+      "\ud83d\udd12 Schedule regular security assessments",
+      "\ud83e\uddea Implement continuous testing pipeline"
+    ]
+  },
+  "next_steps": [
+    "\ud83d\udcca Set up production monitoring and alerting",
+    "\ud83d\udd04 Implement automated testing pipeline",
+    "\ud83d\udcda Update documentation and runbooks",
+    "\ud83c\udf93 Train team on new system architecture",
+    "\ud83d\udcc5 Schedule regular system health checks"
+  ]
+}
