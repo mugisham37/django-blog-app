@@ -400,12 +400,64 @@ prod-rollback: ## Rollback production deployment
 prod-status: ## Check production status
 	kubectl get pods -l environment=production
 
-# Utility commands
+# Development tooling commands
 generate-types: ## Generate TypeScript types from Django models
-	cd apps/api && python manage.py generate_typescript_types
+	python tools/type-generator.py
 
-generate-api-client: ## Generate API client from OpenAPI spec
-	cd packages/api-client && openapi-generator-cli generate -i ../../apps/api/openapi.json -g typescript-axios -o src/generated
+generate-types-watch: ## Generate TypeScript types with file watching
+	python tools/type-generator.py --watch
+
+generate-api-client: ## Generate API client from Django REST Framework
+	python tools/api-client-generator.py
+
+generate-api-client-watch: ## Generate API client with file watching
+	python tools/api-client-generator.py --watch
+
+hot-reload: ## Start hot reload development environment
+	node tools/hot-reload-config.js start
+
+hot-reload-stop: ## Stop hot reload development environment
+	node tools/hot-reload-config.js stop
+
+hot-reload-restart: ## Restart hot reload development environment
+	node tools/hot-reload-config.js restart
+
+hot-reload-list: ## List hot reload services
+	node tools/hot-reload-config.js list
+
+generate-django-app: ## Generate Django app from template (requires APP_NAME and CONFIG)
+	@if [ -z "$(APP_NAME)" ]; then echo "Please specify APP_NAME=myapp"; exit 1; fi
+	@if [ -z "$(CONFIG)" ]; then \
+		python tools/templates/django-app.template.py $(APP_NAME) --example; \
+	else \
+		python tools/templates/django-app.template.py $(APP_NAME) --config $(CONFIG); \
+	fi
+
+generate-nextjs-component: ## Generate Next.js component from template (requires COMPONENT_NAME)
+	@if [ -z "$(COMPONENT_NAME)" ]; then echo "Please specify COMPONENT_NAME=MyComponent"; exit 1; fi
+	@if [ -z "$(PRESET)" ]; then \
+		node tools/templates/nextjs-component.template.js $(COMPONENT_NAME); \
+	else \
+		node tools/templates/nextjs-component.template.js $(COMPONENT_NAME) --preset $(PRESET); \
+	fi
+
+setup-dev-env: ## Setup development environment
+	@if [ -f "tools/setup-dev-environment.sh" ]; then \
+		chmod +x tools/setup-dev-environment.sh && ./tools/setup-dev-environment.sh; \
+	elif [ -f "tools/setup-dev-environment.ps1" ]; then \
+		powershell -ExecutionPolicy Bypass -File tools/setup-dev-environment.ps1; \
+	else \
+		echo "Setup script not found"; \
+	fi
+
+setup-dev-env-force: ## Setup development environment (force overwrite)
+	@if [ -f "tools/setup-dev-environment.sh" ]; then \
+		chmod +x tools/setup-dev-environment.sh && ./tools/setup-dev-environment.sh --force; \
+	elif [ -f "tools/setup-dev-environment.ps1" ]; then \
+		powershell -ExecutionPolicy Bypass -File tools/setup-dev-environment.ps1 -Force; \
+	else \
+		echo "Setup script not found"; \
+	fi
 
 setup-dev: ## Setup development environment
 	$(MAKE) install

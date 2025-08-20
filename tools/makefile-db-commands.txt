@@ -1,0 +1,40 @@
+db-makemigrations-app: ## Create Django migrations for specific app (requires APP_NAME)
+	@if [ -z "$(APP_NAME)" ]; then echo "Please specify APP_NAME=myapp"; exit 1; fi
+	python tools/db-automation.py makemigrations --app $(APP_NAME)
+
+db-rollback: ## Rollback migration (requires APP_NAME and MIGRATION_NAME)
+	@if [ -z "$(APP_NAME)" ] || [ -z "$(MIGRATION_NAME)" ]; then \
+		echo "Please specify APP_NAME=myapp MIGRATION_NAME=0001_initial"; exit 1; \
+	fi
+	python tools/db-automation.py rollback $(APP_NAME) $(MIGRATION_NAME)
+
+db-status: ## Show migration status
+	python tools/db-automation.py status
+
+db-seed-env: ## Seed database for specific environment (requires ENV)
+	@if [ -z "$(ENV)" ]; then echo "Please specify ENV=development|testing|staging|production"; exit 1; fi
+	python tools/db-automation.py seed --env $(ENV)
+
+db-backup-named: ## Backup database with custom name (requires BACKUP_NAME)
+	@if [ -z "$(BACKUP_NAME)" ]; then echo "Please specify BACKUP_NAME=my_backup"; exit 1; fi
+	python tools/db-automation.py backup --name $(BACKUP_NAME)
+
+db-restore: ## Restore database backup (requires BACKUP_FILE)
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "Please specify BACKUP_FILE=backup.json"; exit 1; fi
+	python tools/db-automation.py restore $(BACKUP_FILE)
+
+db-restore-flush: ## Restore database backup with flush (requires BACKUP_FILE)
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "Please specify BACKUP_FILE=backup.json"; exit 1; fi
+	python tools/db-automation.py restore $(BACKUP_FILE) --flush
+
+db-validate: ## Validate database schema
+	python tools/db-automation.py validate
+
+db-optimize: ## Optimize database performance
+	python tools/db-automation.py optimize
+
+db-create-superuser: ## Create Django superuser (requires USERNAME, EMAIL, PASSWORD)
+	@if [ -z "$(USERNAME)" ] || [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ]; then \
+		echo "Please specify USERNAME=admin EMAIL=admin@example.com PASSWORD=password"; exit 1; \
+	fi
+	python tools/db-automation.py createsuperuser --username $(USERNAME) --email $(EMAIL) --password $(PASSWORD)

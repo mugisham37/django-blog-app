@@ -1,0 +1,101 @@
+{
+  "services": {
+    "django": {
+      "command": "python manage.py runserver 0.0.0.0:8000",
+      "cwd": "apps/api",
+      "env": {
+        "DJANGO_SETTINGS_MODULE": "config.settings.development",
+        "PYTHONPATH": "../../packages/core/src:../../packages/auth/src:../../packages/cache/src:../../packages/database/src:../../packages/config/src"
+      },
+      "watchPaths": [
+        "apps/api/**/*.py",
+        "packages/**/*.py"
+      ],
+      "ignorePaths": [
+        "**/__pycache__/**",
+        "**/*.pyc",
+        "**/migrations/**",
+        "**/node_modules/**"
+      ],
+      "restartDelay": 1000,
+      "enabled": true
+    },
+    "nextjs": {
+      "command": "npm run dev",
+      "cwd": "apps/web",
+      "env": {
+        "NODE_ENV": "development",
+        "NEXT_TELEMETRY_DISABLED": "1"
+      },
+      "watchPaths": [
+        "apps/web/**/*.{js,jsx,ts,tsx}",
+        "packages/api-client/**/*.ts",
+        "packages/types/**/*.ts"
+      ],
+      "ignorePaths": [
+        "**/node_modules/**",
+        "**/.next/**",
+        "**/dist/**",
+        "**/.turbo/**"
+      ],
+      "restartDelay": 500,
+      "enabled": true
+    },
+    "typeGeneration": {
+      "command": "python tools/type-generator.py --watch",
+      "cwd": ".",
+      "env": {
+        "PYTHONPATH": "packages/core/src:packages/auth/src:packages/cache/src:packages/database/src:packages/config/src"
+      },
+      "watchPaths": [
+        "apps/api/**/models.py"
+      ],
+      "ignorePaths": [
+        "**/__pycache__/**",
+        "**/*.pyc"
+      ],
+      "restartDelay": 2000,
+      "enabled": true
+    },
+    "apiClientGeneration": {
+      "command": "python tools/api-client-generator.py --watch",
+      "cwd": ".",
+      "env": {
+        "PYTHONPATH": "packages/core/src:packages/auth/src:packages/cache/src:packages/database/src:packages/config/src"
+      },
+      "watchPaths": [
+        "apps/api/**/views.py",
+        "apps/api/**/serializers.py",
+        "apps/api/**/urls.py"
+      ],
+      "ignorePaths": [
+        "**/__pycache__/**",
+        "**/*.pyc"
+      ],
+      "restartDelay": 2000,
+      "enabled": true
+    },
+    "tailwindWatch": {
+      "command": "npx tailwindcss -i ./src/styles/globals.css -o ./src/styles/output.css --watch",
+      "cwd": "apps/web",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "watchPaths": [
+        "apps/web/**/*.{js,jsx,ts,tsx,html}"
+      ],
+      "ignorePaths": [
+        "**/node_modules/**",
+        "**/.next/**"
+      ],
+      "restartDelay": 300,
+      "enabled": false
+    }
+  },
+  "global": {
+    "clearConsole": true,
+    "showTimestamps": true,
+    "colorOutput": true,
+    "debounceDelay": 300
+  }
+}
