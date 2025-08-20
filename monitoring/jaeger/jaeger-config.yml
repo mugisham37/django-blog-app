@@ -1,0 +1,91 @@
+collector:
+  zipkin:
+    host-port: ":9411"
+  
+  grpc:
+    host-port: ":14250"
+  
+  http:
+    host-port: ":14268"
+
+  log-level: info
+  
+  es:
+    server-urls: http://elasticsearch:9200
+    username: ${ELASTICSEARCH_USERNAME}
+    password: ${ELASTICSEARCH_PASSWORD}
+    index-prefix: jaeger
+    create-index-templates: true
+    version: 7
+    max-span-age: 72h
+    num-shards: 5
+    num-replicas: 1
+
+query:
+  base-path: /
+  port: 16686
+  log-level: info
+  
+  es:
+    server-urls: http://elasticsearch:9200
+    username: ${ELASTICSEARCH_USERNAME}
+    password: ${ELASTICSEARCH_PASSWORD}
+    index-prefix: jaeger
+    max-doc-count: 10000
+
+agent:
+  collector:
+    host-port: jaeger-collector:14267
+  
+  processor:
+    jaeger:
+      workers: 50
+      queue-size: 2000
+    
+    batch:
+      workers: 10
+      queue-size: 1000
+
+  http-server:
+    host-port: ":5778"
+
+  grpc-server:
+    host-port: ":14250"
+
+  binary-server:
+    host-port: ":6832"
+
+  compact-server:
+    host-port: ":6831"
+
+  log-level: info
+
+ingester:
+  parallelism: 1000
+  deadlock-interval: 1m
+  
+  es:
+    server-urls: http://elasticsearch:9200
+    username: ${ELASTICSEARCH_USERNAME}
+    password: ${ELASTICSEARCH_PASSWORD}
+    index-prefix: jaeger
+    bulk:
+      size: 5000000
+      workers: 10
+      flush-interval: 200ms
+
+sampling:
+  strategies:
+    default_strategy:
+      type: probabilistic
+      param: 0.1
+    per_service_strategies:
+      - service: "django-api"
+        type: probabilistic
+        param: 0.5
+      - service: "nextjs-web"
+        type: probabilistic
+        param: 0.3
+      - service: "background-tasks"
+        type: probabilistic
+        param: 1.0

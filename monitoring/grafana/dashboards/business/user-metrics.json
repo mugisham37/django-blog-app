@@ -1,0 +1,78 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Business Metrics - User Analytics",
+    "tags": ["business", "users", "analytics"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "django_active_users_total",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "yellow", "value": 100 },
+                { "color": "green", "value": 1000 }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 }
+      },
+      {
+        "id": 2,
+        "title": "User Registrations",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(django_user_registrations_total[1h])",
+            "legendFormat": "Registrations/hour"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 }
+      },
+      {
+        "id": 3,
+        "title": "Blog Post Views",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(django_blog_post_views_total[5m])",
+            "legendFormat": "Views/min"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+      },
+      {
+        "id": 4,
+        "title": "Comment Activity",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(django_comments_created_total[5m])",
+            "legendFormat": "Comments/min"
+          }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+      }
+    ],
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "refresh": "1m"
+  }
+}
