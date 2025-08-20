@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: django-migration-${JOB_ID}
+  namespace: ${NAMESPACE}
+  labels:
+    app: django-migration
+    job-id: "${JOB_ID}"
+spec:
+  template:
+    metadata:
+      labels:
+        app: django-migration
+        job-id: "${JOB_ID}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: django-migration
+        image: ${API_IMAGE}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Starting Django migrations..."
+          python manage.py migrate --noinput
+          echo "Migrations completed successfully"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: django-secret
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: django-secret
+              key: redis-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: django-secret
+              key: secret-key
+        - name: DEBUG
+          value: "0"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        fsGroup: 1000
+  backoffLimit: 3
+  activeDeadlineSeconds: 600

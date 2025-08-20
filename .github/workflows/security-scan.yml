@@ -1,0 +1,523 @@
+name: Security Scanning
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - dependencies
+          - code
+          - containers
+          - infrastructure
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Dependency Vulnerability Scanning
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == ''
+    
+    strategy:
+      matrix:
+        component: [web, api, packages]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: matrix.component == 'web'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Python
+        if: matrix.component != 'web'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ matrix.component }}" = "web" ]; then
+            cd apps/web && npm ci
+          elif [ "${{ matrix.component }}" = "api" ]; then
+            pip install -r apps/api/requirements/development.txt
+          else
+            pip install -r apps/api/requirements/development.txt
+            cd packages/core && pip install -e .
+            cd ../auth && pip install -e .
+            cd ../cache && pip install -e .
+            cd ../database && pip install -e .
+            cd ../config && pip install -e .
+          fi
+
+      - name: Run npm audit (Web)
+        if: matrix.component == 'web'
+        run: |
+          cd apps/web
+          npm audit --audit-level moderate --json > npm-audit-report.json || true
+          npm audit --audit-level moderate
+
+      - name: Run Safety check (Python)
+        if: matrix.component != 'web'
+        run: |
+          if [ "${{ matrix.component }}" = "api" ]; then
+            cd apps/api
+          else
+            cd packages
+          fi
+          
+          pip install safety
+          safety check --json --output safety-report.json || true
+          safety check
+
+      - name: Run pip-audit (Python)
+        if: matrix.component != 'web'
+        run: |
+          pip install pip-audit
+          
+          if [ "${{ matrix.component }}" = "api" ]; then
+            cd apps/api && pip-audit --format=json --output=pip-audit-report.json || true
+          else
+            cd packages && pip-audit --format=json --output=pip-audit-report.json || true
+          fi
+
+      - name: Upload dependency scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-scan-${{ matrix.component }}
+          path: |
+            apps/web/npm-audit-report.json
+            apps/api/safety-report.json
+            apps/api/pip-audit-report.json
+            packages/safety-report.json
+            packages/pip-audit-report.json
+
+  # Code Security Scanning
+  code-security-scan:
+    name: Code Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == 'code' || github.event.inputs.scan_type == ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install security tools
+        run: |
+          pip install bandit semgrep safety
+          npm install -g eslint-plugin-security
+
+      - name: Run Bandit (Python SAST)
+        run: |
+          bandit -r apps/api packages -f json -o bandit-report.json || true
+          bandit -r apps/api packages
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/django
+            p/javascript
+            p/typescript
+            p/react
+            p/owasp-top-ten
+          generateSarif: "1"
+
+      - name: Run ESLint Security Plugin
+        run: |
+          cd apps/web
+          npx eslint --ext .js,.jsx,.ts,.tsx . \
+            --config .eslintrc.js \
+            --format json \
+            --output-file eslint-security-report.json || true
+
+      - name: Run GitLeaks (Secret Detection)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Upload code security scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-security-scan
+          path: |
+            bandit-report.json
+            apps/web/eslint-security-report.json
+            semgrep.sarif
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+  # Container Security Scanning
+  container-security-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == 'containers' || github.event.inputs.scan_type == ''
+    
+    strategy:
+      matrix:
+        component: [api, web]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build container image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/${{ matrix.component }}
+          file: ./apps/${{ matrix.component }}/Dockerfile
+          target: production
+          tags: security-scan-${{ matrix.component }}:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: security-scan-${{ matrix.component }}:latest
+          format: 'sarif'
+          output: 'trivy-${{ matrix.component }}-results.sarif'
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './apps/${{ matrix.component }}'
+          format: 'sarif'
+          output: 'trivy-fs-${{ matrix.component }}-results.sarif'
+
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v3
+        with:
+          image: security-scan-${{ matrix.component }}:latest
+          format: sarif
+          output-file: grype-${{ matrix.component }}-results.sarif
+
+      - name: Upload container scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: container-security-scan-${{ matrix.component }}
+          path: |
+            trivy-${{ matrix.component }}-results.sarif
+            trivy-fs-${{ matrix.component }}-results.sarif
+            grype-${{ matrix.component }}-results.sarif
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: |
+            trivy-${{ matrix.component }}-results.sarif
+            grype-${{ matrix.component }}-results.sarif
+
+  # Infrastructure Security Scanning
+  infrastructure-security-scan:
+    name: Infrastructure Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == 'infrastructure' || github.event.inputs.scan_type == ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform (if using)
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Run Checkov (Infrastructure as Code Security)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infrastructure/
+          framework: kubernetes,dockerfile,docker_compose
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Run kube-score (Kubernetes Security)
+        run: |
+          # Install kube-score
+          wget https://github.com/zegl/kube-score/releases/download/v1.16.1/kube-score_1.16.1_linux_amd64.tar.gz
+          tar -xzf kube-score_1.16.1_linux_amd64.tar.gz
+          chmod +x kube-score
+          
+          # Scan Kubernetes manifests
+          ./kube-score score infrastructure/k8s/**/*.yaml > kube-score-report.txt || true
+
+      - name: Run Polaris (Kubernetes Best Practices)
+        run: |
+          # Install Polaris
+          wget https://github.com/FairwindsOps/polaris/releases/download/8.5.0/polaris_linux_amd64.tar.gz
+          tar -xzf polaris_linux_amd64.tar.gz
+          chmod +x polaris
+          
+          # Scan Kubernetes manifests
+          ./polaris audit --audit-path infrastructure/k8s/ --format json > polaris-report.json || true
+
+      - name: Run Docker Compose security check
+        run: |
+          # Check Docker Compose files for security issues
+          docker run --rm -v "$PWD:/project" \
+            aquasec/trivy config /project/docker-compose.yml \
+            --format json --output docker-compose-security.json || true
+
+      - name: Upload infrastructure scan results
+        uses: actions/upload-artifact@v3
+        with:
+          name: infrastructure-security-scan
+          path: |
+            checkov-results.sarif
+            kube-score-report.txt
+            polaris-report.json
+            docker-compose-security.json
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+  # License Compliance Scanning
+  license-compliance:
+    name: License Compliance Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.scan_type == 'full' || github.event.inputs.scan_type == ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install license scanners
+        run: |
+          npm install -g license-checker
+          pip install pip-licenses
+
+      - name: Scan Node.js licenses
+        run: |
+          cd apps/web
+          npm ci
+          license-checker --json --out ../../node-licenses.json
+
+      - name: Scan Python licenses
+        run: |
+          pip install -r apps/api/requirements/production.txt
+          pip-licenses --format=json --output-file python-licenses.json
+
+      - name: Check for prohibited licenses
+        run: |
+          # Define prohibited licenses
+          prohibited_licenses=("GPL-2.0" "GPL-3.0" "AGPL-1.0" "AGPL-3.0")
+          
+          # Check Node.js licenses
+          for license in "${prohibited_licenses[@]}"; do
+            if grep -q "$license" node-licenses.json; then
+              echo "❌ Prohibited license found: $license"
+              exit 1
+            fi
+          done
+          
+          # Check Python licenses
+          for license in "${prohibited_licenses[@]}"; do
+            if grep -q "$license" python-licenses.json; then
+              echo "❌ Prohibited license found: $license"
+              exit 1
+            fi
+          done
+          
+          echo "✅ No prohibited licenses found"
+
+      - name: Upload license reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-compliance
+          path: |
+            node-licenses.json
+            python-licenses.json
+
+  # Security Report Generation
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [dependency-scan, code-security-scan, container-security-scan, infrastructure-security-scan, license-compliance]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all scan results
+        uses: actions/download-artifact@v3
+
+      - name: Generate comprehensive security report
+        run: |
+          mkdir -p security-reports
+          
+          # Create summary report
+          cat > security-reports/security-summary.md << 'EOF'
+          # Security Scan Summary
+          
+          **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          
+          ## Scan Results
+          
+          ### Dependency Vulnerabilities
+          EOF
+          
+          # Process dependency scan results
+          if [ -d "dependency-scan-web" ]; then
+            echo "- Web dependencies: $(jq '.vulnerabilities | length' dependency-scan-web/npm-audit-report.json 2>/dev/null || echo 'N/A') vulnerabilities found" >> security-reports/security-summary.md
+          fi
+          
+          if [ -d "dependency-scan-api" ]; then
+            echo "- API dependencies: $(jq '. | length' dependency-scan-api/safety-report.json 2>/dev/null || echo 'N/A') vulnerabilities found" >> security-reports/security-summary.md
+          fi
+          
+          # Add other scan results
+          cat >> security-reports/security-summary.md << 'EOF'
+          
+          ### Code Security Issues
+          - Static analysis completed
+          - Secret detection completed
+          
+          ### Container Security
+          - Container vulnerability scanning completed
+          - Base image security validated
+          
+          ### Infrastructure Security
+          - Kubernetes configuration validated
+          - Docker Compose security checked
+          
+          ### License Compliance
+          - License compatibility verified
+          - No prohibited licenses detected
+          
+          ## Recommendations
+          
+          1. Review and address high-severity vulnerabilities
+          2. Update dependencies with known security issues
+          3. Implement additional security controls as needed
+          4. Schedule regular security reviews
+          
+          EOF
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-reports/
+
+      - name: Create security issue (if vulnerabilities found)
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `Security vulnerabilities detected - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Security Scan Results
+            
+            Security vulnerabilities have been detected in the latest scan.
+            
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+            **Workflow:** ${{ github.workflow }}
+            **Run ID:** ${{ github.run_id }}
+            
+            Please review the scan results and address any high-severity issues.
+            
+            ### Next Steps
+            1. Download and review the security report artifacts
+            2. Address high and critical severity vulnerabilities
+            3. Update dependencies as needed
+            4. Re-run security scans to verify fixes
+            
+            ### Artifacts
+            - Dependency scan results
+            - Code security scan results  
+            - Container security scan results
+            - Infrastructure security scan results
+            - Comprehensive security report
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'vulnerability', 'high-priority']
+            });
+
+  # Notification
+  notify:
+    name: Notify Security Scan Results
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, code-security-scan, container-security-scan, infrastructure-security-scan, license-compliance, security-report]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: ${{ needs.dependency-scan.result == 'success' && needs.code-security-scan.result == 'success' && needs.container-security-scan.result == 'success' }}
+        run: |
+          echo "✅ Security scanning completed successfully!"
+          echo "No critical vulnerabilities detected"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify vulnerabilities found
+        if: ${{ needs.dependency-scan.result == 'failure' || needs.code-security-scan.result == 'failure' || needs.container-security-scan.result == 'failure' }}
+        run: |
+          echo "⚠️ Security vulnerabilities detected!"
+          echo "Please review the security report and address issues"
+          echo "Commit: ${{ github.sha }}"

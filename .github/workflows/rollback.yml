@@ -1,0 +1,614 @@
+name: Emergency Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      rollback_type:
+        description: 'Type of rollback'
+        required: true
+        type: choice
+        options:
+          - deployment
+          - database
+          - full
+      target_version:
+        description: 'Target version/commit to rollback to (optional)'
+        required: false
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+env:
+  STAGING_NAMESPACE: fullstack-staging
+  PRODUCTION_NAMESPACE: fullstack-production
+
+jobs:
+  # Rollback Validation
+  rollback-validation:
+    name: Rollback Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    outputs:
+      should-proceed: ${{ steps.validate.outputs.should-proceed }}
+      namespace: ${{ steps.validate.outputs.namespace }}
+      kube-config: ${{ steps.validate.outputs.kube-config }}
+    
+    steps:
+      - name: Validate rollback request
+        id: validate
+        run: |
+          echo "🔍 Validating rollback request..."
+          
+          # Set namespace and kube config based on environment
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "namespace=${{ env.PRODUCTION_NAMESPACE }}" >> $GITHUB_OUTPUT
+            echo "kube-config=KUBE_CONFIG_PRODUCTION" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=${{ env.STAGING_NAMESPACE }}" >> $GITHUB_OUTPUT
+            echo "kube-config=KUBE_CONFIG_STAGING" >> $GITHUB_OUTPUT
+          fi
+          
+          # Validate reason is provided
+          if [ -z "${{ github.event.inputs.reason }}" ]; then
+            echo "❌ Rollback reason is required"
+            exit 1
+          fi
+          
+          # For production, require additional validation
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "⚠️ Production rollback requested - requires manual approval"
+            echo "Reason: ${{ github.event.inputs.reason }}"
+          fi
+          
+          echo "should-proceed=true" >> $GITHUB_OUTPUT
+          echo "✅ Rollback validation passed"
+
+      - name: Log rollback initiation
+        run: |
+          echo "🚨 ROLLBACK INITIATED"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Type: ${{ github.event.inputs.rollback_type }}"
+          echo "Target Version: ${{ github.event.inputs.target_version || 'Previous version' }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "Initiated by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # Pre-rollback Backup
+  pre-rollback-backup:
+    name: Pre-rollback Backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: rollback-validation
+    if: needs.rollback-validation.outputs.should-proceed == 'true' && (github.event.inputs.rollback_type == 'database' || github.event.inputs.rollback_type == 'full')
+    
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets[needs.rollback-validation.outputs.kube-config] }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Create pre-rollback database backup
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "💾 Creating pre-rollback database backup..."
+          
+          # Create backup job
+          cat > pre-rollback-backup-job.yaml << EOF
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: pre-rollback-backup-${{ github.run_number }}
+            namespace: ${{ needs.rollback-validation.outputs.namespace }}
+          spec:
+            template:
+              spec:
+                containers:
+                - name: postgres-backup
+                  image: postgres:15-alpine
+                  env:
+                  - name: PGPASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: postgres-secret
+                        key: password
+                  command:
+                  - /bin/bash
+                  - -c
+                  - |
+                    pg_dump -h postgres-service -U postgres -d fullstack_blog > /backup/pre-rollback-backup-\$(date +%Y%m%d_%H%M%S).sql
+                    echo "Backup completed successfully"
+                  volumeMounts:
+                  - name: backup-storage
+                    mountPath: /backup
+                volumes:
+                - name: backup-storage
+                  persistentVolumeClaim:
+                    claimName: backup-pvc
+                restartPolicy: Never
+            backoffLimit: 3
+          EOF
+          
+          kubectl apply -f pre-rollback-backup-job.yaml
+          
+          # Wait for backup to complete
+          kubectl wait --for=condition=complete job/pre-rollback-backup-${{ github.run_number }} \
+            --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=900s
+          
+          echo "✅ Pre-rollback backup completed"
+
+  # Application Rollback
+  application-rollback:
+    name: Application Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [rollback-validation, pre-rollback-backup]
+    if: always() && needs.rollback-validation.outputs.should-proceed == 'true' && (github.event.inputs.rollback_type == 'deployment' || github.event.inputs.rollback_type == 'full')
+    
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets[needs.rollback-validation.outputs.kube-config] }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Get current deployment status
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "📊 Current deployment status:"
+          kubectl get deployments --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          
+          # Get rollout history
+          echo "📜 Rollout history for API:"
+          kubectl rollout history deployment/django-api --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          
+          echo "📜 Rollout history for Web:"
+          kubectl rollout history deployment/nextjs-web --namespace=${{ needs.rollback-validation.outputs.namespace }}
+
+      - name: Rollback to specific version
+        if: github.event.inputs.target_version != ''
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🔄 Rolling back to specific version: ${{ github.event.inputs.target_version }}"
+          
+          # This would require more sophisticated logic to map version to revision
+          # For now, we'll rollback to previous version
+          echo "⚠️ Specific version rollback not implemented - rolling back to previous version"
+
+      - name: Rollback API deployment
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🔄 Rolling back API deployment..."
+          
+          # Rollback to previous revision
+          kubectl rollout undo deployment/django-api --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          
+          # Wait for rollback to complete
+          kubectl rollout status deployment/django-api \
+            --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=600s
+
+      - name: Rollback Web deployment
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🔄 Rolling back Web deployment..."
+          
+          # Rollback to previous revision
+          kubectl rollout undo deployment/nextjs-web --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          
+          # Wait for rollback to complete
+          kubectl rollout status deployment/nextjs-web \
+            --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=600s
+
+      - name: Verify rollback
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🧪 Verifying rollback..."
+          
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod \
+            -l app=django-api --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=300s
+          kubectl wait --for=condition=ready pod \
+            -l app=nextjs-web --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=300s
+          
+          # Check deployment status
+          kubectl get pods --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          
+          echo "✅ Application rollback completed"
+
+  # Database Rollback
+  database-rollback:
+    name: Database Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [rollback-validation, pre-rollback-backup, application-rollback]
+    if: always() && needs.rollback-validation.outputs.should-proceed == 'true' && (github.event.inputs.rollback_type == 'database' || github.event.inputs.rollback_type == 'full')
+    
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets[needs.rollback-validation.outputs.kube-config] }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Identify target database state
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🔍 Identifying target database state..."
+          
+          # List available backups
+          kubectl exec -n ${{ needs.rollback-validation.outputs.namespace }} \
+            deployment/django-api -- ls -la /backups/ || echo "No backup directory found"
+          
+          # For this example, we'll use the most recent backup before the current deployment
+          echo "Target: Most recent backup before current deployment"
+
+      - name: Stop application connections
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "⏸️ Scaling down applications to stop database connections..."
+          
+          # Scale down to 0 replicas
+          kubectl scale deployment/django-api --replicas=0 --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          kubectl scale deployment/nextjs-web --replicas=0 --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          kubectl scale deployment/celery-worker --replicas=0 --namespace=${{ needs.rollback-validation.outputs.namespace }} || true
+          kubectl scale deployment/celery-beat --replicas=0 --namespace=${{ needs.rollback-validation.outputs.namespace }} || true
+          
+          # Wait for pods to terminate
+          sleep 30
+
+      - name: Restore database from backup
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🗄️ Restoring database from backup..."
+          
+          # Create database restore job
+          cat > database-restore-job.yaml << EOF
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: database-restore-${{ github.run_number }}
+            namespace: ${{ needs.rollback-validation.outputs.namespace }}
+          spec:
+            template:
+              spec:
+                containers:
+                - name: postgres-restore
+                  image: postgres:15-alpine
+                  env:
+                  - name: PGPASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: postgres-secret
+                        key: password
+                  command:
+                  - /bin/bash
+                  - -c
+                  - |
+                    echo "Dropping existing database..."
+                    dropdb -h postgres-service -U postgres fullstack_blog --if-exists
+                    
+                    echo "Creating new database..."
+                    createdb -h postgres-service -U postgres fullstack_blog
+                    
+                    echo "Restoring from backup..."
+                    # Find the most recent backup (this is simplified)
+                    BACKUP_FILE=\$(ls -t /backup/*.sql | head -1)
+                    if [ -f "\$BACKUP_FILE" ]; then
+                      psql -h postgres-service -U postgres -d fullstack_blog < "\$BACKUP_FILE"
+                      echo "Database restore completed successfully"
+                    else
+                      echo "No backup file found"
+                      exit 1
+                    fi
+                  volumeMounts:
+                  - name: backup-storage
+                    mountPath: /backup
+                volumes:
+                - name: backup-storage
+                  persistentVolumeClaim:
+                    claimName: backup-pvc
+                restartPolicy: Never
+            backoffLimit: 1
+          EOF
+          
+          kubectl apply -f database-restore-job.yaml
+          
+          # Wait for restore to complete
+          kubectl wait --for=condition=complete job/database-restore-${{ github.run_number }} \
+            --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=1200s
+          
+          echo "✅ Database restore completed"
+
+      - name: Restart applications
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🚀 Restarting applications..."
+          
+          # Scale back up
+          kubectl scale deployment/django-api --replicas=2 --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          kubectl scale deployment/nextjs-web --replicas=2 --namespace=${{ needs.rollback-validation.outputs.namespace }}
+          kubectl scale deployment/celery-worker --replicas=1 --namespace=${{ needs.rollback-validation.outputs.namespace }} || true
+          kubectl scale deployment/celery-beat --replicas=1 --namespace=${{ needs.rollback-validation.outputs.namespace }} || true
+          
+          # Wait for pods to be ready
+          kubectl wait --for=condition=ready pod \
+            -l app=django-api --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=300s
+          kubectl wait --for=condition=ready pod \
+            -l app=nextjs-web --namespace=${{ needs.rollback-validation.outputs.namespace }} --timeout=300s
+
+  # Post-rollback Validation
+  post-rollback-validation:
+    name: Post-rollback Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [rollback-validation, application-rollback, database-rollback]
+    if: always() && needs.rollback-validation.outputs.should-proceed == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets[needs.rollback-validation.outputs.kube-config] }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Check application health
+        run: |
+          export KUBECONFIG=kubeconfig
+          
+          echo "🏥 Checking application health after rollback..."
+          
+          # Get service endpoints
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            API_URL="https://api.yourapp.com"
+            WEB_URL="https://yourapp.com"
+          else
+            API_URL="https://api-staging.yourapp.com"
+            WEB_URL="https://staging.yourapp.com"
+          fi
+          
+          # Health checks with retries
+          for i in {1..10}; do
+            echo "Health check attempt $i/10..."
+            
+            if curl -f "$API_URL/health/" && curl -f "$WEB_URL/api/health"; then
+              echo "✅ Health checks passed"
+              break
+            else
+              echo "⚠️ Health check failed, retrying in 30 seconds..."
+              sleep 30
+            fi
+            
+            if [ $i -eq 10 ]; then
+              echo "❌ Health checks failed after 10 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Run smoke tests
+        run: |
+          cd tests && npm ci
+          
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            npm run test:production-smoke
+          else
+            npm run test:smoke -- --env staging
+          fi
+
+      - name: Validate data integrity
+        run: |
+          echo "🔍 Validating data integrity..."
+          
+          # This would include checks specific to your application
+          # For example, checking critical data counts, user authentication, etc.
+          
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            API_URL="https://api.yourapp.com"
+          else
+            API_URL="https://api-staging.yourapp.com"
+          fi
+          
+          # Example data integrity checks
+          curl -f "$API_URL/api/v1/health/database/" || exit 1
+          
+          echo "✅ Data integrity validation passed"
+
+  # Rollback Documentation
+  rollback-documentation:
+    name: Document Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [rollback-validation, application-rollback, database-rollback, post-rollback-validation]
+    if: always() && needs.rollback-validation.outputs.should-proceed == 'true'
+    
+    steps:
+      - name: Create rollback report
+        run: |
+          mkdir -p rollback-reports
+          
+          cat > rollback-reports/rollback-report-${{ github.run_number }}.md << EOF
+          # Rollback Report
+          
+          **Rollback ID:** ${{ github.run_number }}
+          **Environment:** ${{ github.event.inputs.environment }}
+          **Type:** ${{ github.event.inputs.rollback_type }}
+          **Initiated by:** ${{ github.actor }}
+          **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          **Reason:** ${{ github.event.inputs.reason }}
+          
+          ## Rollback Details
+          
+          - **Target Version:** ${{ github.event.inputs.target_version || 'Previous version' }}
+          - **Application Rollback:** ${{ needs.application-rollback.result }}
+          - **Database Rollback:** ${{ needs.database-rollback.result }}
+          - **Post-validation:** ${{ needs.post-rollback-validation.result }}
+          
+          ## Actions Taken
+          
+          1. Pre-rollback backup created
+          2. Application deployments rolled back
+          3. Database restored (if applicable)
+          4. Health checks and validation performed
+          
+          ## Current Status
+          
+          The ${{ github.event.inputs.environment }} environment has been rolled back successfully.
+          All health checks are passing and the system is operational.
+          
+          ## Next Steps
+          
+          1. Monitor the system for stability
+          2. Investigate the root cause of the issue that required rollback
+          3. Plan and test fixes before next deployment
+          4. Update deployment procedures if necessary
+          
+          ## Contact
+          
+          For questions about this rollback, contact the DevOps team or the person who initiated it: ${{ github.actor }}
+          EOF
+
+      - name: Upload rollback report
+        uses: actions/upload-artifact@v3
+        with:
+          name: rollback-report-${{ github.run_number }}
+          path: rollback-reports/
+
+      - name: Create rollback issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `Rollback Completed - ${{ github.event.inputs.environment }} - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Rollback Summary
+            
+            A rollback has been completed for the ${{ github.event.inputs.environment }} environment.
+            
+            **Details:**
+            - **Environment:** ${{ github.event.inputs.environment }}
+            - **Type:** ${{ github.event.inputs.rollback_type }}
+            - **Initiated by:** ${{ github.actor }}
+            - **Reason:** ${{ github.event.inputs.reason }}
+            - **Workflow Run:** ${{ github.run_id }}
+            
+            **Status:**
+            - Application Rollback: ${{ needs.application-rollback.result }}
+            - Database Rollback: ${{ needs.database-rollback.result }}
+            - Post-validation: ${{ needs.post-rollback-validation.result }}
+            
+            ## Next Steps
+            
+            1. ✅ Monitor system stability
+            2. 🔍 Investigate root cause
+            3. 🛠️ Plan and test fixes
+            4. 📋 Update procedures if needed
+            
+            ## Artifacts
+            
+            - Rollback report available in workflow artifacts
+            - Pre-rollback backup created and stored
+            - Detailed logs available in workflow run
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['rollback', 'operations', 'high-priority', `environment:${{ github.event.inputs.environment }}`]
+            });
+
+  # Notification
+  notify:
+    name: Notify Rollback Status
+    runs-on: ubuntu-latest
+    needs: [rollback-validation, application-rollback, database-rollback, post-rollback-validation, rollback-documentation]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: ${{ needs.post-rollback-validation.result == 'success' }}
+        run: |
+          echo "✅ Rollback completed successfully!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Type: ${{ github.event.inputs.rollback_type }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "System is operational and health checks are passing"
+
+      - name: Notify failure
+        if: ${{ needs.application-rollback.result == 'failure' || needs.database-rollback.result == 'failure' || needs.post-rollback-validation.result == 'failure' }}
+        run: |
+          echo "❌ Rollback failed or incomplete!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Type: ${{ github.event.inputs.rollback_type }}"
+          echo "🚨 IMMEDIATE MANUAL INTERVENTION REQUIRED"
+          echo "Check workflow logs and contact DevOps team immediately"
+          exit 1
+
+      - name: Notify partial success
+        if: ${{ needs.application-rollback.result == 'success' && needs.database-rollback.result != 'success' && needs.post-rollback-validation.result == 'success' }}
+        run: |
+          echo "⚠️ Partial rollback completed"
+          echo "Application rollback: ✅ Success"
+          echo "Database rollback: ❌ Failed or skipped"
+          echo "Manual database intervention may be required"

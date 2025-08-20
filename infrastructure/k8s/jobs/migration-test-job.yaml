@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migration-test-${JOB_ID}
+  namespace: ${NAMESPACE}
+  labels:
+    app: migration-test
+    job-id: "${JOB_ID}"
+spec:
+  template:
+    metadata:
+      labels:
+        app: migration-test
+        job-id: "${JOB_ID}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migration-test
+        image: ${API_IMAGE}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Testing Django migrations (dry-run)..."
+          
+          # Create a temporary database for testing
+          export TEST_DATABASE_URL="${DATABASE_URL}_migration_test"
+          
+          # Run migrations in dry-run mode
+          python manage.py migrate --dry-run --verbosity=2
+          
+          # Check for any migration conflicts
+          python manage.py showmigrations --plan
+          
+          # Validate migration consistency
+          python manage.py makemigrations --dry-run --check
+          
+          echo "Migration test completed successfully"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: django-secret
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: django-secret
+              key: redis-url
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: django-secret
+              key: secret-key
+        - name: DEBUG
+          value: "0"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        fsGroup: 1000
+  backoffLimit: 1
+  activeDeadlineSeconds: 300

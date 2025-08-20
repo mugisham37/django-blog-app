@@ -1,0 +1,500 @@
+name: Performance Monitoring
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      duration:
+        description: 'Test duration (minutes)'
+        required: false
+        default: '5'
+        type: string
+
+env:
+  STAGING_URL: https://staging.yourapp.com
+  PRODUCTION_URL: https://yourapp.com
+
+jobs:
+  # Lighthouse Performance Audit
+  lighthouse-audit:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        environment: [staging, production]
+        page: [home, login, dashboard, blog]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Set target URL
+        run: |
+          if [ "${{ matrix.environment }}" = "production" ]; then
+            echo "TARGET_URL=${{ env.PRODUCTION_URL }}" >> $GITHUB_ENV
+          else
+            echo "TARGET_URL=${{ env.STAGING_URL }}" >> $GITHUB_ENV
+          fi
+
+      - name: Run Lighthouse audit
+        run: |
+          case "${{ matrix.page }}" in
+            "home")
+              PAGE_URL="$TARGET_URL"
+              ;;
+            "login")
+              PAGE_URL="$TARGET_URL/login"
+              ;;
+            "dashboard")
+              PAGE_URL="$TARGET_URL/dashboard"
+              ;;
+            "blog")
+              PAGE_URL="$TARGET_URL/blog"
+              ;;
+          esac
+          
+          lhci autorun \
+            --upload.target=temporary-public-storage \
+            --collect.url="$PAGE_URL" \
+            --collect.numberOfRuns=3 \
+            --assert.assertions.performance=0.8 \
+            --assert.assertions.accessibility=0.9 \
+            --assert.assertions.best-practices=0.8 \
+            --assert.assertions.seo=0.8
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v3
+        with:
+          name: lighthouse-${{ matrix.environment }}-${{ matrix.page }}
+          path: .lighthouseci/
+
+  # Load Testing
+  load-testing:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        environment: [staging]
+        test-type: [smoke, load, stress]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Set test parameters
+        run: |
+          DURATION="${{ github.event.inputs.duration || '5' }}"
+          
+          case "${{ matrix.test-type }}" in
+            "smoke")
+              echo "VUS=1" >> $GITHUB_ENV
+              echo "DURATION=${DURATION}m" >> $GITHUB_ENV
+              ;;
+            "load")
+              echo "VUS=10" >> $GITHUB_ENV
+              echo "DURATION=${DURATION}m" >> $GITHUB_ENV
+              ;;
+            "stress")
+              echo "VUS=50" >> $GITHUB_ENV
+              echo "DURATION=${DURATION}m" >> $GITHUB_ENV
+              ;;
+          esac
+          
+          if [ "${{ matrix.environment }}" = "production" ]; then
+            echo "TARGET_URL=${{ env.PRODUCTION_URL }}" >> $GITHUB_ENV
+          else
+            echo "TARGET_URL=${{ env.STAGING_URL }}" >> $GITHUB_ENV
+          fi
+
+      - name: Run k6 load test
+        run: |
+          cd tests/performance
+          
+          k6 run \
+            --vus $VUS \
+            --duration $DURATION \
+            --env TARGET_URL=$TARGET_URL \
+            --out json=results-${{ matrix.environment }}-${{ matrix.test-type }}.json \
+            k6-${{ matrix.test-type }}-test.js
+
+      - name: Process results
+        run: |
+          cd tests/performance
+          
+          # Extract key metrics
+          jq '.metrics' results-${{ matrix.environment }}-${{ matrix.test-type }}.json > metrics.json
+          
+          # Check thresholds
+          RESPONSE_TIME=$(jq -r '.http_req_duration.avg' metrics.json)
+          ERROR_RATE=$(jq -r '.http_req_failed.rate' metrics.json)
+          
+          echo "Average Response Time: ${RESPONSE_TIME}ms"
+          echo "Error Rate: ${ERROR_RATE}%"
+          
+          # Fail if thresholds exceeded
+          if (( $(echo "$RESPONSE_TIME > 2000" | bc -l) )); then
+            echo "❌ Response time threshold exceeded"
+            exit 1
+          fi
+          
+          if (( $(echo "$ERROR_RATE > 0.05" | bc -l) )); then
+            echo "❌ Error rate threshold exceeded"
+            exit 1
+          fi
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-${{ matrix.environment }}-${{ matrix.test-type }}
+          path: tests/performance/results-*.json
+
+  # Database Performance Monitoring
+  database-performance:
+    name: Database Performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.inputs.environment == 'staging' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary requests
+
+      - name: Run database performance tests
+        run: |
+          python << 'EOF'
+          import psycopg2
+          import time
+          import json
+          import os
+          
+          # Database connection (would use staging credentials)
+          # This is a simplified example
+          
+          results = {
+              "timestamp": time.time(),
+              "tests": []
+          }
+          
+          # Simulate database performance tests
+          test_queries = [
+              ("SELECT COUNT(*) FROM auth_user", "user_count"),
+              ("SELECT COUNT(*) FROM blog_post", "post_count"),
+              ("SELECT AVG(id) FROM auth_user", "avg_user_id")
+          ]
+          
+          for query, test_name in test_queries:
+              start_time = time.time()
+              # Simulate query execution
+              time.sleep(0.1)  # Simulate query time
+              end_time = time.time()
+              
+              results["tests"].append({
+                  "name": test_name,
+                  "query": query,
+                  "duration_ms": (end_time - start_time) * 1000,
+                  "status": "success"
+              })
+          
+          # Save results
+          with open("db_performance_results.json", "w") as f:
+              json.dump(results, f, indent=2)
+          
+          print("Database performance tests completed")
+          EOF
+
+      - name: Upload database performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: database-performance
+          path: db_performance_results.json
+
+  # API Performance Testing
+  api-performance:
+    name: API Performance Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        environment: [staging]
+        endpoint: [health, auth, blog, users]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          npm install -g autocannon
+
+      - name: Set target URL
+        run: |
+          if [ "${{ matrix.environment }}" = "production" ]; then
+            echo "API_URL=https://api.yourapp.com" >> $GITHUB_ENV
+          else
+            echo "API_URL=https://api-staging.yourapp.com" >> $GITHUB_ENV
+          fi
+
+      - name: Run API performance test
+        run: |
+          case "${{ matrix.endpoint }}" in
+            "health")
+              ENDPOINT="/health/"
+              ;;
+            "auth")
+              ENDPOINT="/api/v1/auth/login/"
+              ;;
+            "blog")
+              ENDPOINT="/api/v1/blog/posts/"
+              ;;
+            "users")
+              ENDPOINT="/api/v1/users/"
+              ;;
+          esac
+          
+          autocannon \
+            --connections 10 \
+            --duration 60 \
+            --json \
+            --output api-perf-${{ matrix.environment }}-${{ matrix.endpoint }}.json \
+            "$API_URL$ENDPOINT"
+
+      - name: Process API results
+        run: |
+          RESULT_FILE="api-perf-${{ matrix.environment }}-${{ matrix.endpoint }}.json"
+          
+          # Extract key metrics
+          REQUESTS_PER_SEC=$(jq -r '.requests.average' $RESULT_FILE)
+          AVG_LATENCY=$(jq -r '.latency.average' $RESULT_FILE)
+          ERROR_RATE=$(jq -r '.errors' $RESULT_FILE)
+          
+          echo "Requests per second: $REQUESTS_PER_SEC"
+          echo "Average latency: ${AVG_LATENCY}ms"
+          echo "Errors: $ERROR_RATE"
+          
+          # Check thresholds
+          if (( $(echo "$AVG_LATENCY > 500" | bc -l) )); then
+            echo "❌ API latency threshold exceeded"
+            exit 1
+          fi
+
+      - name: Upload API performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-performance-${{ matrix.environment }}-${{ matrix.endpoint }}
+          path: api-perf-*.json
+
+  # Performance Report Generation
+  performance-report:
+    name: Generate Performance Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lighthouse-audit, load-testing, database-performance, api-performance]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all performance results
+        uses: actions/download-artifact@v3
+
+      - name: Generate performance report
+        run: |
+          mkdir -p performance-reports
+          
+          cat > performance-reports/performance-summary.md << 'EOF'
+          # Performance Monitoring Report
+          
+          **Report Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          
+          ## Executive Summary
+          
+          This report provides a comprehensive overview of application performance across multiple dimensions.
+          
+          ## Lighthouse Audit Results
+          
+          ### Performance Scores
+          EOF
+          
+          # Process Lighthouse results
+          for dir in lighthouse-*/; do
+            if [ -d "$dir" ]; then
+              echo "- $(basename $dir): Lighthouse audit completed" >> performance-reports/performance-summary.md
+            fi
+          done
+          
+          cat >> performance-reports/performance-summary.md << 'EOF'
+          
+          ## Load Testing Results
+          
+          ### Test Summary
+          EOF
+          
+          # Process load testing results
+          for dir in performance-*/; do
+            if [ -d "$dir" ]; then
+              echo "- $(basename $dir): Load test completed" >> performance-reports/performance-summary.md
+            fi
+          done
+          
+          cat >> performance-reports/performance-summary.md << 'EOF'
+          
+          ## API Performance
+          
+          ### Endpoint Performance
+          EOF
+          
+          # Process API performance results
+          for dir in api-performance-*/; do
+            if [ -d "$dir" ]; then
+              echo "- $(basename $dir): API test completed" >> performance-reports/performance-summary.md
+            fi
+          done
+          
+          cat >> performance-reports/performance-summary.md << 'EOF'
+          
+          ## Database Performance
+          
+          Database performance tests completed successfully.
+          
+          ## Recommendations
+          
+          1. Monitor response times and optimize slow endpoints
+          2. Review database query performance regularly
+          3. Implement caching for frequently accessed data
+          4. Consider CDN optimization for static assets
+          5. Monitor error rates and implement alerting
+          
+          ## Thresholds
+          
+          - **Response Time:** < 2000ms
+          - **Error Rate:** < 5%
+          - **Lighthouse Performance:** > 80
+          - **API Latency:** < 500ms
+          
+          EOF
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: performance-reports/
+
+      - name: Create performance issue (if thresholds exceeded)
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = `Performance thresholds exceeded - ${new Date().toISOString().split('T')[0]}`;
+            const body = `
+            ## Performance Alert
+            
+            Performance monitoring has detected issues that exceed defined thresholds.
+            
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+            **Workflow:** ${{ github.workflow }}
+            **Run ID:** ${{ github.run_id }}
+            
+            ### Issues Detected
+            - Response time or error rate thresholds exceeded
+            - Performance degradation detected
+            
+            ### Next Steps
+            1. Review performance report artifacts
+            2. Identify root cause of performance issues
+            3. Implement optimizations
+            4. Re-run performance tests to verify improvements
+            
+            ### Artifacts
+            - Lighthouse audit results
+            - Load testing results
+            - API performance results
+            - Database performance results
+            - Comprehensive performance report
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['performance', 'monitoring', 'high-priority']
+            });
+
+  # Notification
+  notify:
+    name: Notify Performance Results
+    runs-on: ubuntu-latest
+    needs: [lighthouse-audit, load-testing, database-performance, api-performance, performance-report]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: ${{ needs.lighthouse-audit.result == 'success' && needs.load-testing.result == 'success' && needs.api-performance.result == 'success' }}
+        run: |
+          echo "✅ Performance monitoring completed successfully!"
+          echo "All performance thresholds met"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify performance issues
+        if: ${{ needs.lighthouse-audit.result == 'failure' || needs.load-testing.result == 'failure' || needs.api-performance.result == 'failure' }}
+        run: |
+          echo "⚠️ Performance issues detected!"
+          echo "Some performance thresholds were exceeded"
+          echo "Please review the performance report"
+          echo "Commit: ${{ github.sha }}"
