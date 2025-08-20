@@ -1,0 +1,97 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: fullstack-monolith-base
+  namespace: fullstack-monolith
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - persistent-volumes.yaml
+  - storage-classes.yaml
+  - rbac.yaml
+  - pod-disruption-budget.yaml
+  - postgres-deployment.yaml
+  - redis-deployment.yaml
+  - django-deployment.yaml
+  - nextjs-deployment.yaml
+  - nginx-deployment.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - monitoring.yaml
+
+commonLabels:
+  app.kubernetes.io/name: fullstack-monolith
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: base
+  app.kubernetes.io/part-of: fullstack-monolith
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: django-api
+    newTag: latest
+  - name: nextjs-web
+    newTag: latest
+  - name: postgres
+    newName: postgres
+    newTag: 15-alpine
+  - name: redis
+    newName: redis
+    newTag: 7-alpine
+  - name: nginx
+    newName: nginx
+    newTag: 1.25-alpine
+
+replicas:
+  - name: django-api
+    count: 3
+  - name: nextjs-web
+    count: 3
+  - name: nginx-proxy
+    count: 2
+  - name: django-celery-worker
+    count: 2
+
+configMapGenerator:
+  - name: build-info
+    literals:
+      - BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+      - GIT_COMMIT=$(git rev-parse HEAD)
+      - VERSION=1.0.0
+
+secretGenerator:
+  - name: generated-secrets
+    literals:
+      - RANDOM_SECRET=$(openssl rand -base64 32)
+
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: django-api
+      namespace: fullstack-monolith
+    spec:
+      template:
+        metadata:
+          annotations:
+            config/checksum: $(kustomize cfg grep . | sha256sum | cut -d' ' -f1)
+
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: django-api
+      namespace: fullstack-monolith
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BUILD_INFO
+          valueFrom:
+            configMapKeyRef:
+              name: build-info
+              key: BUILD_DATE

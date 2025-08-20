@@ -1,0 +1,84 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: fullstack-monolith-production
+  namespace: fullstack-monolith-prod
+
+resources:
+  - ../../base
+
+namespace: fullstack-monolith-prod
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+  app.kubernetes.io/instance: production
+
+images:
+  - name: django-api
+    newTag: v1.0.0
+  - name: nextjs-web
+    newTag: v1.0.0
+
+replicas:
+  - name: django-api
+    count: 5
+  - name: nextjs-web
+    count: 5
+  - name: nginx-proxy
+    count: 3
+  - name: django-celery-worker
+    count: 4
+
+configMapGenerator:
+  - name: prod-config
+    behavior: merge
+    literals:
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - ALLOWED_HOSTS=yourdomain.com,api.yourdomain.com
+      - CORS_ALLOWED_ORIGINS=https://yourdomain.com
+      - SECURE_SSL_REDIRECT=True
+      - SESSION_COOKIE_SECURE=True
+      - CSRF_COOKIE_SECURE=True
+
+secretGenerator:
+  - name: prod-secrets
+    behavior: merge
+    files:
+      - SECRET_KEY=secrets/django-secret-key.txt
+      - JWT_SECRET_KEY=secrets/jwt-secret-key.txt
+      - POSTGRES_PASSWORD=secrets/postgres-password.txt
+      - REDIS_PASSWORD=secrets/redis-password.txt
+      - SENTRY_DSN=secrets/sentry-dsn.txt
+
+patchesStrategicMerge:
+  - django-prod-patch.yaml
+  - nextjs-prod-patch.yaml
+  - postgres-prod-patch.yaml
+  - redis-prod-patch.yaml
+  - nginx-prod-patch.yaml
+  - hpa-prod-patch.yaml
+
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: django-api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: "production"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: DEPLOYMENT_TIME
+          value: "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+generators:
+  - secret-generator.yaml

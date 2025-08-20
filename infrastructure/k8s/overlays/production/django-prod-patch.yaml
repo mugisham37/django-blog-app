@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-api
+  namespace: fullstack-monolith-prod
+spec:
+  replicas: 5
+  strategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - django-api
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: django-api
+          env:
+            - name: DEBUG
+              value: "False"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: SECURE_SSL_REDIRECT
+              value: "True"
+            - name: SESSION_COOKIE_SECURE
+              value: "True"
+            - name: CSRF_COOKIE_SECURE
+              value: "True"
+            - name: SECURE_HSTS_SECONDS
+              value: "31536000"
+            - name: SECURE_HSTS_INCLUDE_SUBDOMAINS
+              value: "True"
+            - name: SECURE_HSTS_PRELOAD
+              value: "True"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+              scheme: HTTPS
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+              scheme: HTTPS
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-celery-worker
+  namespace: fullstack-monolith-prod
+spec:
+  replicas: 4
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - django-celery-worker
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: celery-worker
+          command:
+            - celery
+            - -A
+            - config
+            - worker
+            - --loglevel=info
+            - --concurrency=8
+            - --max-tasks-per-child=1000
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "400m"
+            limits:
+              memory: "1Gi"
+              cpu: "800m"

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextjs-web
+  namespace: fullstack-monolith-dev
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: nextjs-web
+          env:
+            - name: NODE_ENV
+              value: "development"
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://dev-django-api-service:8000/api/v1"
+            - name: NEXTAUTH_URL
+              value: "http://localhost:3000"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          readinessProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 30

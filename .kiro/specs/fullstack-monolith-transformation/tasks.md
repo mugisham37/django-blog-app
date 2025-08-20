@@ -199,7 +199,7 @@
   - **CREATE** container integration tests
   - _Requirements: 4.2, 4.6, 12.2_
 
-- [ ] 17. Implement Kubernetes orchestration
+- [x] 17. Implement Kubernetes orchestration
 
   - **CREATE** Kubernetes manifests for all services at infrastructure/k8s/
   - **CREATE** deployments, services, and ingress controllers

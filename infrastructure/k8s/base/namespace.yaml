@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fullstack-monolith
+  labels:
+    name: fullstack-monolith
+    environment: base
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fullstack-monolith-dev
+  labels:
+    name: fullstack-monolith-dev
+    environment: development
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fullstack-monolith-staging
+  labels:
+    name: fullstack-monolith-staging
+    environment: staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fullstack-monolith-prod
+  labels:
+    name: fullstack-monolith-prod
+    environment: production

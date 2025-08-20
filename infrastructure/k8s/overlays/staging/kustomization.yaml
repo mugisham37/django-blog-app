@@ -1,0 +1,71 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: fullstack-monolith-staging
+  namespace: fullstack-monolith-staging
+
+resources:
+  - ../../base
+
+namespace: fullstack-monolith-staging
+
+namePrefix: staging-
+
+commonLabels:
+  environment: staging
+  app.kubernetes.io/instance: staging
+
+images:
+  - name: django-api
+    newTag: staging-latest
+  - name: nextjs-web
+    newTag: staging-latest
+
+replicas:
+  - name: django-api
+    count: 2
+  - name: nextjs-web
+    count: 2
+  - name: nginx-proxy
+    count: 2
+  - name: django-celery-worker
+    count: 2
+
+configMapGenerator:
+  - name: staging-config
+    behavior: merge
+    literals:
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - ALLOWED_HOSTS=staging.yourdomain.com,staging-api.yourdomain.com
+      - CORS_ALLOWED_ORIGINS=https://staging.yourdomain.com
+      - SECURE_SSL_REDIRECT=True
+      - SESSION_COOKIE_SECURE=True
+
+secretGenerator:
+  - name: staging-secrets
+    behavior: merge
+    literals:
+      - SECRET_KEY=staging-secret-key-change-this
+      - POSTGRES_PASSWORD=staging-password
+      - REDIS_PASSWORD=staging-redis-password
+
+patchesStrategicMerge:
+  - django-staging-patch.yaml
+  - nextjs-staging-patch.yaml
+  - postgres-staging-patch.yaml
+  - redis-staging-patch.yaml
+
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: django-api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: "staging"

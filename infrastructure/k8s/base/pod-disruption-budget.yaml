@@ -1,0 +1,51 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: django-api-pdb
+  namespace: fullstack-monolith
+  labels:
+    app: django-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: django-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nextjs-web-pdb
+  namespace: fullstack-monolith
+  labels:
+    app: nextjs-web
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: nextjs-web
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nginx-proxy-pdb
+  namespace: fullstack-monolith
+  labels:
+    app: nginx-proxy
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: nginx-proxy
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: django-celery-worker-pdb
+  namespace: fullstack-monolith
+  labels:
+    app: django-celery-worker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: django-celery-worker

@@ -1,0 +1,69 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: fullstack-monolith-development
+  namespace: fullstack-monolith-dev
+
+resources:
+  - ../../base
+
+namespace: fullstack-monolith-dev
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+  app.kubernetes.io/instance: development
+
+images:
+  - name: django-api
+    newTag: dev-latest
+  - name: nextjs-web
+    newTag: dev-latest
+
+replicas:
+  - name: django-api
+    count: 1
+  - name: nextjs-web
+    count: 1
+  - name: nginx-proxy
+    count: 1
+  - name: django-celery-worker
+    count: 1
+
+configMapGenerator:
+  - name: dev-config
+    behavior: merge
+    literals:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+      - ALLOWED_HOSTS=*
+      - CORS_ALLOW_ALL_ORIGINS=True
+
+secretGenerator:
+  - name: dev-secrets
+    behavior: merge
+    literals:
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - POSTGRES_PASSWORD=dev-password
+
+patchesStrategicMerge:
+  - django-dev-patch.yaml
+  - nextjs-dev-patch.yaml
+  - postgres-dev-patch.yaml
+  - redis-dev-patch.yaml
+
+patchesJson6902:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: django-api
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
