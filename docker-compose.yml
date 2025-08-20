@@ -26,9 +26,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: fullstack_redis
-    command: redis-server --appendonly yes --requirepass redis_password
+    command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
       - redis_data:/data
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf
     ports:
       - "6379:6379"
     healthcheck:
@@ -38,6 +39,27 @@ services:
       retries: 5
     networks:
       - fullstack_network
+
+  # Redis Cluster for distributed caching (optional - use with profile)
+  redis-cluster-setup:
+    image: redis:7-alpine
+    container_name: fullstack_redis_cluster_setup
+    profiles:
+      - cluster
+    volumes:
+      - ./infrastructure/redis:/redis-config
+    working_dir: /redis-config
+    command: >
+      sh -c "
+        echo 'Setting up Redis cluster...' &&
+        docker-compose -f docker-compose.redis-cluster.yml up -d &&
+        sleep 15 &&
+        echo 'Redis cluster setup complete'
+      "
+    networks:
+      - fullstack_network
+    depends_on:
+      - redis
 
   # Django API
   django-api:

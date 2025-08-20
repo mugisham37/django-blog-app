@@ -251,12 +251,59 @@ security-update: ## Update dependencies for security
 	cd apps/web && npm audit fix
 	cd apps/api && pip-audit --fix
 
+# Cache commands
+cache-setup: ## Setup Redis cluster for distributed caching
+	@echo "Setting up Redis cluster..."
+	cd infrastructure/redis && ./setup-cluster.sh
+
+cache-setup-windows: ## Setup Redis cluster for distributed caching (Windows)
+	@echo "Setting up Redis cluster..."
+	cd infrastructure/redis && powershell -ExecutionPolicy Bypass -File setup-cluster.ps1
+
+cache-start: ## Start Redis cluster
+	docker-compose --profile cluster up -d
+
+cache-stop: ## Stop Redis cluster
+	docker-compose --profile cluster down
+
+cache-status: ## Check Redis cluster status
+	docker exec redis-cluster-node-1 redis-cli -p 7000 cluster info
+
+cache-benchmark: ## Run cache performance benchmarks
+	python tools/cache/cache-benchmark.py --config tools/cache/cache-benchmark-config.json --format text
+
+cache-monitor: ## Start cache monitoring
+	python tools/cache/cache-monitor.py --config tools/cache/cache-monitor-config.json --daemon
+
+cache-report: ## Generate cache performance report
+	python tools/cache/cache-monitor.py --config tools/cache/cache-monitor-config.json --report
+
+cache-metrics: ## Export cache metrics in Prometheus format
+	python tools/cache/cache-monitor.py --config tools/cache/cache-monitor-config.json --prometheus
+
+cache-test: ## Run cache performance tests
+	cd packages/cache && python -m pytest tests/test_performance.py -v
+
+cache-warm: ## Warm cache with frequently accessed data
+	cd apps/api && python manage.py warm_cache
+
+cache-clear: ## Clear all cache data
+	docker-compose exec redis redis-cli FLUSHALL
+	@echo "Cache cleared successfully"
+
+cache-info: ## Show cache information and statistics
+	docker-compose exec redis redis-cli INFO memory
+	docker-compose exec redis redis-cli INFO stats
+
 # Monitoring commands
 monitor-logs: ## View application logs
 	tail -f apps/api/logs/django.log apps/web/logs/nextjs.log
 
 monitor-metrics: ## View application metrics (requires Prometheus)
 	@echo "Metrics available at: http://localhost:9090"
+
+monitor-cache: ## Monitor cache performance in real-time
+	python tools/cache/cache-monitor.py --config tools/cache/cache-monitor-config.json
 
 # Production commands
 prod-deploy: ## Deploy to production
