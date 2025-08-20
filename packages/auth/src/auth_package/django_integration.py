@@ -38,6 +38,10 @@ from .strategies import JWTStrategy, JWTConfig
 from .security import PasswordHasher
 from .permissions import RoleBasedPermission, default_role_registry
 from .models import User as AuthUser, UserStatus, AuthProvider
+from .session_management import SessionManager, DeviceInfo, default_session_manager
+from .audit_logging import AuditLogger, AuditEventType, AuditSeverity, default_audit_logger
+from .password_policies import PasswordValidator, AccountLockoutManager, default_password_validator, default_lockout_manager
+from .mfa import TOTPProvider, SMSProvider, EmailProvider
 
 logger = logging.getLogger(__name__)
 
@@ -133,17 +137,17 @@ class DjangoUserAdapter:
 
 class JWTAuthenticationBackend(BaseBackend):
     """
-    Django authentication backend using JWT tokens.
+    Enhanced Django authentication backend with advanced security features.
     
-    Integrates the auth package JWT strategy with Django's
-    authentication system.
+    Integrates JWT tokens, session management, audit logging, account lockout,
+    and MFA support with Django's authentication system.
     """
     
     def __init__(self):
         if not DJANGO_AVAILABLE:
             raise ImportError("Django is not available")
         
-        # Initialize JWT strategy from Django settings
+        # Initialize components from Django settings
         jwt_config = JWTConfig(
             secret_key=getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY),
             algorithm=getattr(settings, 'JWT_ALGORITHM', 'HS256'),
@@ -152,54 +156,224 @@ class JWTAuthenticationBackend(BaseBackend):
         )
         self.jwt_strategy = JWTStrategy(jwt_config)
         self.password_hasher = PasswordHasher()
+        self.session_manager = default_session_manager
+        self.audit_logger = default_audit_logger
+        self.lockout_manager = default_lockout_manager
+        self.password_validator = default_password_validator
     
-    def authenticate(self, request, username=None, password=None, token=None, **kwargs):
+    def authenticate(self, request, username=None, password=None, token=None, mfa_token=None, **kwargs):
         """
-        Authenticate user with username/password or JWT token.
+        Enhanced authentication with security features.
         
         Args:
             request: Django request object
             username: Username for password authentication
             password: Password for password authentication
             token: JWT token for token authentication
+            mfa_token: MFA verification token
             
         Returns:
             Django User instance if authentication successful
         """
         User = get_user_model()
+        ip_address = self._get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
         
         if token:
             # JWT token authentication
-            try:
-                payload = self.jwt_strategy.validate_token(token, "access")
-                user_id = payload.get("user_id")
-                
-                if user_id:
-                    return User.objects.get(pk=user_id)
-            except Exception as e:
-                logger.warning(f"JWT authentication failed: {e}")
-                return None
+            return self._authenticate_token(token, ip_address, user_agent)
         
         elif username and password:
-            # Username/password authentication
+            # Username/password authentication with security checks
+            return self._authenticate_credentials(username, password, ip_address, user_agent, request)
+        
+        return None
+    
+    def _authenticate_token(self, token: str, ip_address: str, user_agent: str):
+        """Authenticate using JWT token."""
+        try:
+            payload = self.jwt_strategy.validate_token(token, "access")
+            user_id = payload.get("user_id")
+            session_id = payload.get("session_id")
+            
+            if user_id:
+                User = get_user_model()
+                user = User.objects.get(pk=user_id)
+                
+                # Validate session if session_id is present
+                if session_id:
+                    device_info = DeviceInfo(
+                        device_id=f"web_{user_id}",
+                        user_agent=user_agent,
+                        ip_address=ip_address
+                    )
+                    
+                    if not self.session_manager.validate_session(session_id, device_info):
+                        self.audit_logger.log_authentication_event(
+                            AuditEventType.LOGIN_FAILURE,
+                            str(user_id),
+                            ip_address,
+                            user_agent,
+                            "failure",
+                            {"reason": "invalid_session"}
+                        )
+                        return None
+                
+                # Log successful token authentication
+                self.audit_logger.log_authentication_event(
+                    AuditEventType.LOGIN_SUCCESS,
+                    str(user_id),
+                    ip_address,
+                    user_agent,
+                    "success",
+                    {"method": "jwt_token"}
+                )
+                
+                return user
+                
+        except Exception as e:
+            logger.warning(f"JWT authentication failed: {e}")
+            self.audit_logger.log_authentication_event(
+                AuditEventType.LOGIN_FAILURE,
+                "unknown",
+                ip_address,
+                user_agent,
+                "failure",
+                {"reason": "invalid_token", "error": str(e)}
+            )
+        
+        return None
+    
+    def _authenticate_credentials(self, username: str, password: str, ip_address: str, 
+                                user_agent: str, request):
+        """Authenticate using username/password with security checks."""
+        User = get_user_model()
+        
+        try:
+            # Try to find user by username or email
             try:
                 user = User.objects.get(username=username)
-                
-                # Use auth package password verification
-                if hasattr(user, 'password_hash'):
-                    password_hash = user.password_hash
-                else:
-                    # Fallback to Django password field
-                    password_hash = user.password
-                
-                if self.password_hasher.verify_password(password, password_hash):
-                    return user
             except User.DoesNotExist:
+                try:
+                    user = User.objects.get(email=username)
+                except User.DoesNotExist:
+                    user = None
+            
+            if not user:
+                # Record failed attempt for unknown user
+                self.lockout_manager.record_login_attempt(
+                    username, ip_address, False, user_agent
+                )
+                
+                self.audit_logger.log_authentication_event(
+                    AuditEventType.LOGIN_FAILURE,
+                    username,
+                    ip_address,
+                    user_agent,
+                    "failure",
+                    {"reason": "user_not_found"}
+                )
+                
                 # Run password hasher to prevent timing attacks
                 self.password_hasher.verify_password(password, "dummy_hash")
                 return None
-        
-        return None
+            
+            user_id = str(user.pk)
+            
+            # Check account lockout
+            if self.lockout_manager.is_account_locked(user_id):
+                lockout_info = self.lockout_manager.get_lockout_info(user_id)
+                
+                self.audit_logger.log_authentication_event(
+                    AuditEventType.LOGIN_FAILURE,
+                    user_id,
+                    ip_address,
+                    user_agent,
+                    "failure",
+                    {"reason": "account_locked", "lockout_info": lockout_info}
+                )
+                
+                return None
+            
+            # Verify password
+            password_hash = getattr(user, 'password_hash', user.password)
+            
+            if self.password_hasher.verify_password(password, password_hash):
+                # Successful authentication
+                
+                # Record successful login
+                self.lockout_manager.record_login_attempt(
+                    user_id, ip_address, True, user_agent
+                )
+                
+                # Create session
+                device_info = DeviceInfo(
+                    device_id=f"web_{user_id}_{ip_address}",
+                    user_agent=user_agent,
+                    ip_address=ip_address,
+                    device_type="web"
+                )
+                
+                session = self.session_manager.create_session(
+                    user_id, device_info, "password"
+                )
+                
+                # Store session ID in request for later use
+                if hasattr(request, 'session'):
+                    request.session['auth_session_id'] = session.session_id
+                
+                # Log successful authentication
+                self.audit_logger.log_authentication_event(
+                    AuditEventType.LOGIN_SUCCESS,
+                    user_id,
+                    ip_address,
+                    user_agent,
+                    "success",
+                    {"method": "password", "session_id": session.session_id}
+                )
+                
+                return user
+            else:
+                # Failed authentication
+                lockout_result = self.lockout_manager.record_login_attempt(
+                    user_id, ip_address, False, user_agent
+                )
+                
+                self.audit_logger.log_authentication_event(
+                    AuditEventType.LOGIN_FAILURE,
+                    user_id,
+                    ip_address,
+                    user_agent,
+                    "failure",
+                    {
+                        "reason": "invalid_password",
+                        "attempts_remaining": lockout_result.get("attempts_remaining"),
+                        "require_captcha": lockout_result.get("require_captcha")
+                    }
+                )
+                
+                return None
+                
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
+            self.audit_logger.log_authentication_event(
+                AuditEventType.LOGIN_FAILURE,
+                username,
+                ip_address,
+                user_agent,
+                "error",
+                {"reason": "system_error", "error": str(e)}
+            )
+            return None
+    
+    def _get_client_ip(self, request) -> str:
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR', '')
+        return ip
     
     def get_user(self, user_id):
         """Get user by ID."""

@@ -6,9 +6,6 @@ import secrets
 import re
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import smtplib
 
 from .base import MFAProvider, MFAChallenge, MFAResult, MFAStatus
 
@@ -17,26 +14,35 @@ class EmailProvider(MFAProvider):
     """
     Email-based MFA provider.
     
-    Sends verification codes via email using configurable SMTP settings.
-    Supports HTML and plain text email templates.
+    Sends verification codes via email using configurable email services
+    like SMTP, SendGrid, AWS SES, or other email gateways.
     """
     
     def __init__(self, config: Dict[str, Any] = None):
         default_config = {
-            "smtp_host": "localhost",
-            "smtp_port": 587,
-            "smtp_use_tls": True,
-            "smtp_username": "",
-            "smtp_password": "",
-            "from_email": "noreply@example.com",
-            "from_name": "Enterprise App",
+            "service": "smtp",  # smtp, sendgrid, aws_ses, custom
             "code_length": 6,
             "code_lifetime": 600,  # 10 minutes
             "max_attempts": 3,
-            "rate_limit": 10,  # max emails per hour per user
+            "rate_limit": 3,  # max emails per hour per user
             "subject_template": "Your verification code",
-            "html_template": None,
-            "text_template": "Your verification code is: {code}\n\nThis code will expire in {minutes} minutes."
+            "message_template": """
+Your verification code is: {code}
+
+This code will expire in {minutes} minutes.
+
+If you didn't request this code, please ignore this email.
+            """.strip(),
+            "html_template": """
+<html>
+<body>
+    <h2>Email Verification</h2>
+    <p>Your verification code is: <strong>{code}</strong></p>
+    <p>This code will expire in {minutes} minutes.</p>
+    <p>If you didn't request this code, please ignore this email.</p>
+</body>
+</html>
+            """.strip()
         }
         
         if config:
@@ -94,79 +100,166 @@ class EmailProvider(MFAProvider):
         """Generate random verification code."""
         code_length = self.config["code_length"]
         # Generate alphanumeric code
-        chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        code = ''.join([secrets.choice(chars) for _ in range(code_length)])
+        characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        code = ''.join([secrets.choice(characters) for _ in range(code_length)])
         return code
     
-    def _create_email_message(self, to_email: str, code: str) -> MIMEMultipart:
+    def _send_email(self, email: str, subject: str, text_body: str, html_body: str = None) -> Dict[str, Any]:
         """
-        Create email message with verification code.
+        Send email message.
         
         Args:
-            to_email: Recipient email address
-            code: Verification code
+            email: Recipient email address
+            subject: Email subject
+            text_body: Plain text email body
+            html_body: HTML email body (optional)
             
         Returns:
-            Email message object
+            Dictionary with success status and details
         """
-        minutes = self.config["code_lifetime"] // 60
+        service = self.config["service"]
         
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = self.config["subject_template"]
-        msg['From'] = f"{self.config['from_name']} <{self.config['from_email']}>"
-        msg['To'] = to_email
-        
-        # Plain text version
-        text_content = self.config["text_template"].format(
-            code=code,
-            minutes=minutes
-        )
-        text_part = MIMEText(text_content, 'plain')
-        msg.attach(text_part)
-        
-        # HTML version (if template provided)
-        if self.config.get("html_template"):
-            html_content = self.config["html_template"].format(
-                code=code,
-                minutes=minutes
-            )
-            html_part = MIMEText(html_content, 'html')
-            msg.attach(html_part)
-        
-        return msg
-    
-    def _send_email(self, to_email: str, message: MIMEMultipart) -> bool:
-        """
-        Send email message via SMTP.
-        
-        Args:
-            to_email: Recipient email address
-            message: Email message object
-            
-        Returns:
-            True if email was sent successfully
-        """
         try:
-            # Create SMTP connection
-            if self.config["smtp_use_tls"]:
-                server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
-                server.starttls()
+            if service == "smtp":
+                return self._send_smtp_email(email, subject, text_body, html_body)
+            elif service == "sendgrid":
+                return self._send_sendgrid_email(email, subject, text_body, html_body)
+            elif service == "aws_ses":
+                return self._send_aws_ses_email(email, subject, text_body, html_body)
+            elif service == "custom":
+                return self._send_custom_email(email, subject, text_body, html_body)
             else:
-                server = smtplib.SMTP(self.config["smtp_host"], self.config["smtp_port"])
+                return {"success": False, "error": f"Unsupported email service: {service}"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def _send_smtp_email(self, email: str, subject: str, text_body: str, html_body: str = None) -> Dict[str, Any]:
+        """Send email via SMTP."""
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
             
-            # Login if credentials provided
-            if self.config["smtp_username"] and self.config["smtp_password"]:
-                server.login(self.config["smtp_username"], self.config["smtp_password"])
+            smtp_host = self.config.get("smtp_host")
+            smtp_port = self.config.get("smtp_port", 587)
+            smtp_username = self.config.get("smtp_username")
+            smtp_password = self.config.get("smtp_password")
+            from_email = self.config.get("from_email", smtp_username)
+            
+            if not all([smtp_host, smtp_username, smtp_password]):
+                return {"success": False, "error": "Missing SMTP configuration"}
+            
+            # Create message
+            if html_body:
+                msg = MIMEMultipart("alternative")
+                msg.attach(MIMEText(text_body, "plain"))
+                msg.attach(MIMEText(html_body, "html"))
+            else:
+                msg = MIMEText(text_body, "plain")
+            
+            msg["Subject"] = subject
+            msg["From"] = from_email
+            msg["To"] = email
             
             # Send email
-            server.send_message(message, to_addrs=[to_email])
-            server.quit()
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_username, smtp_password)
+                server.send_message(msg)
             
-            return True
+            return {"success": True, "message_id": f"smtp_{datetime.utcnow().timestamp()}"}
             
         except Exception as e:
-            print(f"Error sending email: {e}")
-            return False
+            return {"success": False, "error": str(e)}
+    
+    def _send_sendgrid_email(self, email: str, subject: str, text_body: str, html_body: str = None) -> Dict[str, Any]:
+        """Send email via SendGrid."""
+        try:
+            import sendgrid
+            from sendgrid.helpers.mail import Mail
+            
+            api_key = self.config.get("sendgrid_api_key")
+            from_email = self.config.get("from_email")
+            
+            if not all([api_key, from_email]):
+                return {"success": False, "error": "Missing SendGrid configuration"}
+            
+            sg = sendgrid.SendGridAPIClient(api_key=api_key)
+            
+            mail = Mail(
+                from_email=from_email,
+                to_emails=email,
+                subject=subject,
+                plain_text_content=text_body,
+                html_content=html_body
+            )
+            
+            response = sg.send(mail)
+            
+            return {
+                "success": True,
+                "message_id": response.headers.get("X-Message-Id"),
+                "status_code": response.status_code
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "SendGrid library not installed"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def _send_aws_ses_email(self, email: str, subject: str, text_body: str, html_body: str = None) -> Dict[str, Any]:
+        """Send email via AWS SES."""
+        try:
+            import boto3
+            
+            region = self.config.get("aws_region", "us-east-1")
+            access_key = self.config.get("aws_access_key_id")
+            secret_key = self.config.get("aws_secret_access_key")
+            from_email = self.config.get("from_email")
+            
+            if not from_email:
+                return {"success": False, "error": "Missing from_email configuration"}
+            
+            if access_key and secret_key:
+                ses = boto3.client(
+                    'ses',
+                    region_name=region,
+                    aws_access_key_id=access_key,
+                    aws_secret_access_key=secret_key
+                )
+            else:
+                # Use default credentials
+                ses = boto3.client('ses', region_name=region)
+            
+            # Prepare email content
+            destination = {"ToAddresses": [email]}
+            message = {
+                "Subject": {"Data": subject},
+                "Body": {"Text": {"Data": text_body}}
+            }
+            
+            if html_body:
+                message["Body"]["Html"] = {"Data": html_body}
+            
+            response = ses.send_email(
+                Source=from_email,
+                Destination=destination,
+                Message=message
+            )
+            
+            return {"success": True, "message_id": response["MessageId"]}
+            
+        except ImportError:
+            return {"success": False, "error": "boto3 library not installed"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def _send_custom_email(self, email: str, subject: str, text_body: str, html_body: str = None) -> Dict[str, Any]:
+        """Send email via custom service."""
+        # Implement custom email service integration here
+        # For demo purposes, we'll just log the email
+        print(f"Email to {email}: {subject}\n{text_body}")
+        return {"success": True, "message_id": f"custom_{datetime.utcnow().timestamp()}"}
     
     def generate_challenge(self, user_id: str, email: str, **kwargs) -> MFAResult:
         """
@@ -212,14 +305,28 @@ class EmailProvider(MFAProvider):
             }
         )
         
-        # Send email
-        message = self._create_email_message(email, code)
+        # Prepare email content
+        minutes = self.config["code_lifetime"] // 60
+        subject = self.config["subject_template"]
         
-        if self._send_email(email, message):
+        text_body = self.config["message_template"].format(
+            code=code,
+            minutes=minutes
+        )
+        
+        html_body = self.config["html_template"].format(
+            code=code,
+            minutes=minutes
+        )
+        
+        # Send email
+        email_result = self._send_email(email, subject, text_body, html_body)
+        
+        if email_result["success"]:
             self.store_challenge(challenge)
             self._record_email_sent(user_id)
             
-            # Mask email for security
+            # Mask email for privacy
             masked_email = self._mask_email(email)
             
             return MFAResult(
@@ -228,13 +335,14 @@ class EmailProvider(MFAProvider):
                 challenge_id=challenge_id,
                 metadata={
                     "expires_in": self.config["code_lifetime"],
-                    "code_length": self.config["code_length"]
+                    "code_length": self.config["code_length"],
+                    "message_id": email_result.get("message_id")
                 }
             )
         else:
             return MFAResult(
                 success=False,
-                message="Failed to send email. Please try again later."
+                message=f"Failed to send email: {email_result['error']}"
             )
     
     def verify_challenge(self, challenge_id: str, code: str) -> MFAResult:
@@ -269,7 +377,7 @@ class EmailProvider(MFAProvider):
         expected_code = challenge.metadata["code"].upper()
         entered_code = code.strip().upper()
         
-        if expected_code == entered_code:
+        if self._constant_time_compare(expected_code, entered_code):
             challenge.status = MFAStatus.VERIFIED
             return MFAResult(
                 success=True,
@@ -323,57 +431,56 @@ class EmailProvider(MFAProvider):
         # Resend email
         email = challenge.metadata["email"]
         code = challenge.metadata["code"]
-        message = self._create_email_message(email, code)
+        minutes = self.config["code_lifetime"] // 60
         
-        if self._send_email(email, message):
+        subject = self.config["subject_template"]
+        text_body = self.config["message_template"].format(
+            code=code,
+            minutes=minutes
+        )
+        html_body = self.config["html_template"].format(
+            code=code,
+            minutes=minutes
+        )
+        
+        email_result = self._send_email(email, subject, text_body, html_body)
+        
+        if email_result["success"]:
             self._record_email_sent(challenge.user_id)
-            masked_email = self._mask_email(email)
             return MFAResult(
                 success=True,
-                message=f"Verification code resent to {masked_email}"
+                message="Verification code resent successfully",
+                metadata={"message_id": email_result.get("message_id")}
             )
         else:
             return MFAResult(
                 success=False,
-                message="Failed to resend email. Please try again later."
+                message=f"Failed to resend email: {email_result['error']}"
             )
     
     def _mask_email(self, email: str) -> str:
-        """
-        Mask email address for security.
+        """Mask email address for privacy."""
+        if "@" not in email:
+            return "***@***.***"
         
-        Args:
-            email: Email address to mask
-            
-        Returns:
-            Masked email address
-        """
-        if '@' not in email:
-            return email
-        
-        local, domain = email.split('@', 1)
+        local, domain = email.split("@", 1)
         
         if len(local) <= 2:
-            masked_local = '*' * len(local)
+            masked_local = "*" * len(local)
         else:
-            masked_local = local[0] + '*' * (len(local) - 2) + local[-1]
+            masked_local = local[0] + "*" * (len(local) - 2) + local[-1]
         
-        return f"{masked_local}@{domain}"
+        if "." in domain:
+            domain_parts = domain.split(".")
+            masked_domain = domain_parts[0][0] + "*" * (len(domain_parts[0]) - 1)
+            if len(domain_parts) > 1:
+                masked_domain += "." + domain_parts[-1]
+        else:
+            masked_domain = domain[0] + "*" * (len(domain) - 1)
+        
+        return f"{masked_local}@{masked_domain}"
     
-    def set_html_template(self, template: str):
-        """
-        Set custom HTML email template.
-        
-        Args:
-            template: HTML template with {code} and {minutes} placeholders
-        """
-        self.config["html_template"] = template
-    
-    def set_text_template(self, template: str):
-        """
-        Set custom text email template.
-        
-        Args:
-            template: Text template with {code} and {minutes} placeholders
-        """
-        self.config["text_template"] = template
+    def _constant_time_compare(self, a: str, b: str) -> bool:
+        """Constant-time string comparison."""
+        import hmac
+        return hmac.compare_digest(a.encode('utf-8'), b.encode('utf-8'))

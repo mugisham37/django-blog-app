@@ -91,3 +91,61 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("Passwords don't match")
         return attrs
+
+
+class MFASetupSerializer(serializers.Serializer):
+    """Serializer for MFA setup."""
+    
+    mfa_type = serializers.ChoiceField(choices=['totp', 'sms', 'email'])
+    phone_number = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
+    
+    def validate(self, attrs):
+        mfa_type = attrs.get('mfa_type')
+        
+        if mfa_type == 'sms' and not attrs.get('phone_number'):
+            raise serializers.ValidationError("Phone number is required for SMS MFA")
+        
+        if mfa_type == 'email' and not attrs.get('email'):
+            raise serializers.ValidationError("Email is required for Email MFA")
+        
+        return attrs
+
+
+class MFAVerifySerializer(serializers.Serializer):
+    """Serializer for MFA verification."""
+    
+    challenge_id = serializers.CharField(required=False)
+    code = serializers.CharField()
+    mfa_type = serializers.ChoiceField(choices=['totp', 'sms', 'email'], default='totp')
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """Serializer for password change."""
+    
+    current_password = serializers.CharField()
+    new_password = serializers.CharField(validators=[validate_password])
+    new_password_confirm = serializers.CharField()
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError("New passwords don't match")
+        return attrs
+    
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect")
+        return value
+
+
+class SessionSerializer(serializers.Serializer):
+    """Serializer for session information."""
+    
+    session_id = serializers.CharField()
+    device_type = serializers.CharField()
+    ip_address = serializers.CharField()
+    user_agent = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    last_activity = serializers.DateTimeField()
+    is_current = serializers.BooleanField(default=False)

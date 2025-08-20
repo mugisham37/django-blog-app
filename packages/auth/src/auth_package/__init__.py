@@ -18,6 +18,9 @@ from .mfa import TOTPProvider, SMSProvider, EmailProvider
 from .security import PasswordHasher, TokenManager
 from .permissions import RoleBasedPermission, Permission, Role
 from .models import User, UserRole, UserRepository
+from .session_management import SessionManager, DeviceInfo, Session
+from .audit_logging import AuditLogger, AuditEvent, AuditEventType, AuditSeverity
+from .password_policies import PasswordValidator, PasswordPolicy, AccountLockoutManager
 
 # Django integration (optional)
 DJANGO_INTEGRATION_AVAILABLE = False
@@ -68,6 +71,22 @@ __all__ = [
     "User",
     "UserRole",
     "UserRepository",
+    
+    # Session management
+    "SessionManager",
+    "DeviceInfo",
+    "Session",
+    
+    # Audit logging
+    "AuditLogger",
+    "AuditEvent",
+    "AuditEventType",
+    "AuditSeverity",
+    
+    # Password policies
+    "PasswordValidator",
+    "PasswordPolicy",
+    "AccountLockoutManager",
 ]
 
 # Add Django integration to __all__ if available
