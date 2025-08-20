@@ -1,0 +1,282 @@
+version: "3.8"
+
+services:
+  # Primary PostgreSQL Database
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: postgres-primary
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./migrations:/docker-entrypoint-initdb.d/migrations
+      - ./seeds:/docker-entrypoint-initdb.d/seeds
+      - postgres_archive:/var/lib/postgresql/archive
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-enterprise_db}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - database_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Read Replica PostgreSQL Database
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: postgres-replica
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: 5432
+      REPLICA_USER: replicator
+      REPLICA_PASSWORD: ${REPLICA_PASSWORD:-replica_password}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./postgresql-replica.conf:/etc/postgresql/postgresql-replica.conf
+      - ./setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh
+      - postgres_archive:/var/lib/postgresql/archive:ro
+    ports:
+      - "${POSTGRES_REPLICA_PORT:-5433}:5432"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    command: >
+      bash -c "
+      if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
+        /docker-entrypoint-initdb.d/setup-replica.sh
+      fi &&
+      postgres -c config_file=/etc/postgresql/postgresql-replica.conf
+      "
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-enterprise_db}",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - database_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PgBouncer Connection Pooler
+  pgbouncer:
+    build:
+      context: .
+      dockerfile: Dockerfile.pgbouncer
+    container_name: pgbouncer
+    environment:
+      DATABASES_HOST: postgres-primary
+      DATABASES_PORT: 5432
+      DATABASES_USER: ${POSTGRES_USER:-postgres}
+      DATABASES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASES_DBNAME: ${POSTGRES_DB:-enterprise_db}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:6432"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - database_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis for Caching and Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - database_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Sentinel for High Availability
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: redis-sentinel
+    command: >
+      redis-sentinel /etc/redis/sentinel.conf
+      --sentinel
+    volumes:
+      - ./redis-sentinel.conf:/etc/redis/sentinel.conf
+    ports:
+      - "${REDIS_SENTINEL_PORT:-26379}:26379"
+    depends_on:
+      - redis
+    networks:
+      - database_network
+    restart: unless-stopped
+
+  # Database Administration Tool (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin-servers.json:/pgadmin4/servers.json
+    ports:
+      - "${PGADMIN_PORT:-8080}:80"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    networks:
+      - database_network
+    restart: unless-stopped
+    profiles:
+      - admin
+
+  # Database Backup Service
+  postgres-backup:
+    image: postgres:15-alpine
+    container_name: postgres-backup
+    environment:
+      POSTGRES_HOST: postgres-primary
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-"0 2 * * *"}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      S3_BUCKET: ${S3_BACKUP_BUCKET:-""}
+      SLACK_WEBHOOK: ${SLACK_WEBHOOK:-""}
+    volumes:
+      - backup_data:/var/backups/postgresql
+      - ./backup.sh:/usr/local/bin/backup.sh
+      - ./restore.sh:/usr/local/bin/restore.sh
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    command: >
+      sh -c "
+      echo '${BACKUP_SCHEDULE:-0 2 * * *} /usr/local/bin/backup.sh' | crontab - &&
+      crond -f
+      "
+    networks:
+      - database_network
+    restart: unless-stopped
+    profiles:
+      - backup
+
+  # Database Monitoring with Prometheus Exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres-primary:5432/${POSTGRES_DB:-enterprise_db}?sslmode=disable"
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    networks:
+      - database_network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Redis Monitoring with Prometheus Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    depends_on:
+      - redis
+    networks:
+      - database_network
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_primary_data:
+    driver: local
+  postgres_replica_data:
+    driver: local
+  postgres_archive:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  backup_data:
+    driver: local
+
+networks:
+  database_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

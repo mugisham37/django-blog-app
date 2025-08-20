@@ -1,0 +1,26 @@
+FROM pgbouncer/pgbouncer:latest
+
+# Copy configuration files
+COPY pgbouncer.ini /etc/pgbouncer/pgbouncer.ini
+COPY userlist.txt /etc/pgbouncer/userlist.txt
+
+# Create log directory
+RUN mkdir -p /var/log/pgbouncer && \
+    chown -R pgbouncer:pgbouncer /var/log/pgbouncer && \
+    chmod 755 /var/log/pgbouncer
+
+# Create pid directory
+RUN mkdir -p /var/run/pgbouncer && \
+    chown -R pgbouncer:pgbouncer /var/run/pgbouncer && \
+    chmod 755 /var/run/pgbouncer
+
+# Set proper permissions
+RUN chown pgbouncer:pgbouncer /etc/pgbouncer/pgbouncer.ini && \
+    chown pgbouncer:pgbouncer /etc/pgbouncer/userlist.txt && \
+    chmod 600 /etc/pgbouncer/userlist.txt
+
+EXPOSE 6432
+
+USER pgbouncer
+
+CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
